@@ -36,16 +36,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-import fcntl
 from pathlib import Path
 from threading import RLock
-from typing import Any, Generator
+from typing import Any, Generator, IO
+
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
+
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
 
 import chromadb
 
@@ -98,15 +105,41 @@ INGEST_BATCH_SIZE = 256
 # ---------------------------------------------------------------------------
 # Streamlit (app.py) and Chainlit (chat_lane.py) run as separate OS processes
 # sharing the same on-disk ChromaDB files.  The RLock above only protects
-# threads *within* one process.  fcntl.flock() is an advisory lock backed by
-# the kernel that both processes see, so a Streamlit admin reset can't race
-# with an active Chainlit query and delete a collection mid-read.
+# threads *within* one process.  The helpers below use fcntl.flock on Unix and
+# msvcrt.locking on Windows so both processes see the same advisory lock, and a
+# Streamlit admin reset can't race with an active Chainlit query.
 #
 # Only destructive admin operations (reset, flush) hold the exclusive lock.
 # Normal reads and cache upserts do NOT lock — ChromaDB's SQLite WAL handles
 # concurrent readers safely, and cache upserts use deterministic IDs (safe to
 # collide as idempotent upserts).
 _LOCK_FILE = CHROMA_DIR / ".write.lock"
+
+
+def _prepare_lock_file(handle: IO[str]) -> None:
+    handle.seek(0, os.SEEK_END)
+    if handle.tell() == 0:
+        handle.write("0")
+        handle.flush()
+    handle.seek(0)
+
+
+def _lock_exclusive(handle: IO[str], blocking: bool = True) -> None:
+    _prepare_lock_file(handle)
+    if sys.platform == "win32":
+        mode = msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK
+        msvcrt.locking(handle.fileno(), mode, 1)
+        return
+    flags = fcntl.LOCK_EX if blocking else (fcntl.LOCK_EX | fcntl.LOCK_NB)
+    fcntl.flock(handle.fileno(), flags)
+
+
+def _unlock(handle: IO[str]) -> None:
+    handle.seek(0)
+    if sys.platform == "win32":
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        return
+    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 @contextmanager
@@ -119,12 +152,12 @@ def chroma_write_guard():
     crashing into a deleted collection.
     """
     _LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(_LOCK_FILE, "w") as _lf:
-        fcntl.flock(_lf, fcntl.LOCK_EX)
+    with open(_LOCK_FILE, "a+", encoding="utf-8") as _lf:
+        _lock_exclusive(_lf, blocking=True)
         try:
             yield
         finally:
-            fcntl.flock(_lf, fcntl.LOCK_UN)
+            _unlock(_lf)
 
 
 def store_status() -> dict:
@@ -139,10 +172,10 @@ def store_status() -> dict:
     write_locked = False
     try:
         _LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(_LOCK_FILE, "w") as _lf:
-            fcntl.flock(_lf, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            fcntl.flock(_lf, fcntl.LOCK_UN)
-    except (BlockingIOError, OSError):
+        with open(_LOCK_FILE, "a+", encoding="utf-8") as _lf:
+            _lock_exclusive(_lf, blocking=False)
+            _unlock(_lf)
+    except (BlockingIOError, OSError, PermissionError):
         write_locked = True
 
     try:
