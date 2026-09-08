@@ -4,7 +4,18 @@ This API is only active when the environment variable ``CLS_USE_API=1`` is set.
 By default the Streamlit UI (``app.py``) and the Chainlit Ask Lane (``chat_lane.py``)
 import ``cls_service`` directly; no HTTP hop is needed for local single-machine use.
 
-Three route groups are exposed:
+Route groups:
+
+    GET  /
+        Service index. Browsers get a short HTML page; API clients get JSON.
+        The Streamlit UI is not served here.
+
+    GET  /health
+        Liveness plus Chroma counts. Railway's healthcheck uses this path.
+
+    POST /v1/ingest/default
+        Index ``data/training_corpus/test_books`` (or ``CLS_DEFAULT_DOCUMENTS_DIR``)
+        into this process's Chroma store.
 
     POST /v1/query
         Structured retrieval request.  Returns grounded evidence rows and the
@@ -28,25 +39,73 @@ Start standalone:  ./scripts/launch_api.sh
 
 from __future__ import annotations
 
+import logging
 import os
+import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from cls_config import APP_VERSION, DEFAULT_DLLM_MODEL, KEYWORD_ONLY_RETRIEVAL, RETRIEVAL_ONLY
-from cls_service import answer_text, ask_manual, call_dllm_api, dllm_status, service_status
+from cls_service import (
+    answer_text,
+    ask_manual,
+    call_dllm_api,
+    dllm_status,
+    ingest_default_corpus,
+    service_status,
+)
 
 CLS_RAG_MODEL = "cls-rag-cag-v1.0"
+_LOG = logging.getLogger("cls.api")
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _on_railway() -> bool:
+    return bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PUBLIC_DOMAIN"))
+
+
+def _should_bootstrap_corpus() -> bool:
+    return _env_flag("CLS_BOOTSTRAP_CORPUS", default=_on_railway())
+
+
+def _bootstrap_worker() -> None:
+    try:
+        status = service_status()
+        if int(status.get("indexed_chunks") or 0) > 0:
+            _LOG.info("Chroma already has %s chunks; skipping bootstrap ingest.", status["indexed_chunks"])
+            return
+        _LOG.info("Empty Chroma store — indexing default documents.")
+        result = ingest_default_corpus()
+        _LOG.info("Bootstrap ingest finished: %s", result.get("message"))
+    except Exception:
+        _LOG.exception("Bootstrap ingest failed; API will stay up with an empty store.")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if _should_bootstrap_corpus():
+        threading.Thread(target=_bootstrap_worker, daemon=True, name="cls-bootstrap").start()
+    yield
 
 
 app = FastAPI(
     title="CLS RAG+CAG API",
     version=APP_VERSION,
     description="Shared RAG API plus inference carrier proxy for Streamlit, Chainlit, and OpenAI-compatible frontends.",
+    lifespan=lifespan,
 )
 # CORS: local frontends always allowed; when deployed (Railway injects
 # RAILWAY_PUBLIC_DOMAIN / the service URL), the platform's own origin and any
@@ -99,6 +158,30 @@ class DllmChatRequest(BaseModel):
     system: str | None = None
 
 
+class IngestDefaultRequest(BaseModel):
+    force: bool = False
+
+
+def _service_index() -> dict[str, Any]:
+    return {
+        "service": "CLS RAG+CAG API",
+        "version": APP_VERSION,
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+        "note": "This host is the FastAPI bridge, not the Streamlit UI. Open /docs or POST /v1/query.",
+        "endpoints": [
+            {"method": "GET", "path": "/health"},
+            {"method": "GET", "path": "/v1/models"},
+            {"method": "POST", "path": "/v1/query"},
+            {"method": "POST", "path": "/v1/chat/completions"},
+            {"method": "POST", "path": "/v1/ingest/default"},
+            {"method": "GET", "path": "/v1/dllm/status"},
+            {"method": "POST", "path": "/v1/dllm/chat"},
+        ],
+    }
+
+
 def _query_payload(request: QueryRequest) -> dict[str, Any]:
     result = ask_manual(
         request.query,
@@ -128,9 +211,47 @@ def _last_user_message(messages: list[ChatMessage]) -> str:
     raise HTTPException(status_code=400, detail="At least one user message is required.")
 
 
+@app.get("/", include_in_schema=False)
+def root(request: Request):
+    payload = _service_index()
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        links = "".join(
+            f"<li><code>{item['method']}</code> <a href='{item['path']}'>{item['path']}</a></li>"
+            if item["method"] == "GET"
+            else f"<li><code>{item['method']}</code> {item['path']}</li>"
+            for item in payload["endpoints"]
+        )
+        return HTMLResponse(
+            f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{payload["service"]}</title>
+  <style>
+    body {{ font-family: sans-serif; max-width: 42rem; margin: 3rem auto; line-height: 1.45; }}
+    code {{ background: #f2f2f2; padding: 0.1rem 0.35rem; }}
+  </style>
+</head>
+<body>
+  <h1>{payload["service"]}</h1>
+  <p>{payload["note"]}</p>
+  <p>Version <code>{payload["version"]}</code>. Interactive docs: <a href="/docs">/docs</a>. Health: <a href="/health">/health</a>.</p>
+  <ul>{links}</ul>
+</body>
+</html>"""
+        )
+    return JSONResponse(payload)
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"version": APP_VERSION, "status": "ok", **service_status()}
+
+
+@app.post("/v1/ingest/default")
+def ingest_default(request: IngestDefaultRequest = IngestDefaultRequest()) -> dict[str, Any]:
+    return ingest_default_corpus(force=request.force)
 
 
 @app.get("/v1/models")

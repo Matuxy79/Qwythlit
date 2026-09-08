@@ -14,3 +14,7 @@ healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
+# This service is the FastAPI bridge only. The Streamlit Full App and Chainlit
+# Ask Lane stay local. After deploy: open /docs (not / until this revision is
+# live), then POST /v1/ingest/default if health.indexed_chunks is 0.
+# Persist the index with a volume + CLS_CHROMA_DIR=/data/chroma_store.

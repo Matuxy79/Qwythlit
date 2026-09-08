@@ -1314,6 +1314,8 @@ st.markdown(
 
 dllm_endpoint = dllm_api_status()
 dllm_api_online = bool(dllm_endpoint.get("online"))
+if USE_API_BACKEND:
+    st.caption(f"Query path: FastAPI at `{API_URL}`")
 if KEYWORD_ONLY_RETRIEVAL:
     try:
         warm_keyword_index()
@@ -1436,7 +1438,25 @@ def _render_corpus_admin() -> None:
         st.error("The default documents directory was not found.")
 
     force_reindex = st.checkbox("Force rebuild existing index", value=False)
+    if USE_API_BACKEND:
+        st.caption(f"Index runs on the API host at `{API_URL}` (this machine's files are not uploaded).")
     if st.button("Index default documents", type="primary", use_container_width=True):
+        if USE_API_BACKEND:
+            with st.status("Indexing default documents on the API host...", expanded=True) as status:
+                try:
+                    result = post_json("/v1/ingest/default", {"force": force_reindex}, timeout=300.0)
+                except RuntimeError as exc:
+                    st.error(str(exc))
+                    return
+                for line in result.get("details") or []:
+                    st.write(line)
+                st.write(f"Total chunks added: {result.get('chunks', 0)}")
+                if not result.get("ok", True):
+                    st.warning(result.get("message", "Ingest failed."))
+                    status.update(label="Index failed", state="error", expanded=True)
+                else:
+                    status.update(label="Index ready", state="complete", expanded=False)
+            return
         if not default_files:
             st.warning("No supported documents found in the default directory.")
             return

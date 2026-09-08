@@ -441,6 +441,53 @@ def ingest_path(
     return len(chunks), "indexed"
 
 
+def ingest_default_corpus(*, force: bool = False) -> dict[str, Any]:
+    """Index every supported file in ``DEFAULT_DOCUMENTS_DIR``.
+
+    Used by the FastAPI ``POST /v1/ingest/default`` route and by Railway's
+    empty-store bootstrap so the deployed API is queryable without a local
+    Streamlit admin session writing into a different Chroma directory.
+    """
+    from cls_backend.readers import is_supported
+    from cls_config import DEFAULT_DOCUMENT_DOMAIN, DEFAULT_DOCUMENTS_DIR
+
+    if not DEFAULT_DOCUMENTS_DIR.exists():
+        return {
+            "ok": False,
+            "files": 0,
+            "chunks": 0,
+            "skipped": 0,
+            "message": f"Default documents directory not found: {DEFAULT_DOCUMENTS_DIR}",
+            "details": [],
+        }
+
+    extra_meta = {"domain": DEFAULT_DOCUMENT_DOMAIN} if DEFAULT_DOCUMENT_DOMAIN else None
+    files = 0
+    chunks = 0
+    skipped = 0
+    details: list[str] = []
+    for path in sorted(p for p in DEFAULT_DOCUMENTS_DIR.iterdir() if is_supported(p)):
+        count, message = ingest_path(
+            path,
+            file_signature(path),
+            force=force,
+            extra_metadata=extra_meta,
+        )
+        files += 1
+        chunks += count
+        if message == "already indexed":
+            skipped += 1
+        details.append(f"{path.name}: {message} ({count} chunks)")
+    return {
+        "ok": True,
+        "files": files,
+        "chunks": chunks,
+        "skipped": skipped,
+        "message": "indexed" if chunks or skipped else "no supported documents found",
+        "details": details,
+    }
+
+
 def reset_collection() -> None:
     """Factory-reset the vector store: drop *every* collection, not just the current one, so
     stale/old-version collections (e.g. earlier 768d/512d builds) can't pile up or shadow the

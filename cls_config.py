@@ -14,6 +14,9 @@ CLS_DLLM_API_URL        Base URL for the carrier (default: https://openrouter.ai
 CLS_DLLM_MODEL          Model name passed to the carrier (default: openai/gpt-oss-120b)
 CLS_PARROT_URL          Ollama / llama.cpp base URL for the Ask Lane parrot (default: localhost:11434)
 CLS_API_URL             Internal FastAPI bridge URL (default: http://127.0.0.1:8010)
+CLS_CHROMA_DIR          On-disk Chroma persistent path (default: <app>/chroma_store)
+CLS_BOOTSTRAP_CORPUS    1 = index DEFAULT_DOCUMENTS_DIR when the store is empty
+                        (default: 1 on Railway, 0 locally)
 
 Beamline scopes (RESEARCH_SCOPES)
 ----------------------------------
@@ -47,7 +50,7 @@ DEFAULT_DOCUMENTS_DIR = Path(
     os.getenv("CLS_DEFAULT_DOCUMENTS_DIR", str(MANUAL_DIR / "test_books"))
 )
 DEFAULT_DOCUMENT_DOMAIN = os.getenv("CLS_DEFAULT_DOCUMENT_DOMAIN", "")
-CHROMA_DIR = APP_ROOT / "chroma_store"
+CHROMA_DIR = Path(os.getenv("CLS_CHROMA_DIR") or (APP_ROOT / "chroma_store"))
 
 COLLECTION_NAME = "cls_v2_evidence"            # Evidence Store (384d, MiniLM)
 CACHE_COLLECTION_NAME = "cls_v2_cag_cache"   # CAG Layer (384d, MiniLM)
