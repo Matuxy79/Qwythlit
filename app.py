@@ -33,6 +33,7 @@ import urllib.request
 
 import streamlit as st
 
+from cls_backend.bootstrap import start_corpus_bootstrap
 from cls_config import (
     APP_ROOT,
     APP_VERSION,
@@ -157,6 +158,16 @@ def render_evidence_store(rows: list[dict]) -> None:
 
 API_URL = DEFAULT_API_URL.rstrip("/")
 USE_API_BACKEND = os.getenv("CLS_USE_API", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+@st.cache_resource(show_spinner=False)
+def _start_embedded_bootstrap() -> None:
+    """Preserve Railway's empty-store indexing across sessions and reruns."""
+    start_corpus_bootstrap()
+
+
+if not USE_API_BACKEND:
+    _start_embedded_bootstrap()
 
 
 def post_json(path: str, payload: dict, timeout: float = 30.0) -> dict:

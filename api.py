@@ -39,9 +39,7 @@ Start standalone:  ./scripts/launch_api.sh
 
 from __future__ import annotations
 
-import logging
 import os
-import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -53,6 +51,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from cls_config import APP_VERSION, DEFAULT_DLLM_MODEL, KEYWORD_ONLY_RETRIEVAL, RETRIEVAL_ONLY
+from cls_backend.bootstrap import start_corpus_bootstrap
 from cls_service import (
     answer_text,
     ask_manual,
@@ -63,41 +62,11 @@ from cls_service import (
 )
 
 CLS_RAG_MODEL = "cls-rag-cag-v1.0"
-_LOG = logging.getLogger("cls.api")
-
-
-def _env_flag(name: str, default: bool = False) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def _on_railway() -> bool:
-    return bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PUBLIC_DOMAIN"))
-
-
-def _should_bootstrap_corpus() -> bool:
-    return _env_flag("CLS_BOOTSTRAP_CORPUS", default=_on_railway())
-
-
-def _bootstrap_worker() -> None:
-    try:
-        status = service_status()
-        if int(status.get("indexed_chunks") or 0) > 0:
-            _LOG.info("Chroma already has %s chunks; skipping bootstrap ingest.", status["indexed_chunks"])
-            return
-        _LOG.info("Empty Chroma store — indexing default documents.")
-        result = ingest_default_corpus()
-        _LOG.info("Bootstrap ingest finished: %s", result.get("message"))
-    except Exception:
-        _LOG.exception("Bootstrap ingest failed; API will stay up with an empty store.")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    if _should_bootstrap_corpus():
-        threading.Thread(target=_bootstrap_worker, daemon=True, name="cls-bootstrap").start()
+    start_corpus_bootstrap()
     yield
 
 

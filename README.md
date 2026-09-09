@@ -69,6 +69,32 @@ Without a carrier the app is fully offline: semantic retrieval + instant cited e
 
 ## API + Dual Frontend
 
+### Railway deployment
+
+The default `railway.toml` serves the interactive Streamlit app at `/`, with
+**Full App** and **Ask Lane** on its landing page. It binds to Railway's `PORT`
+and uses `/_stcore/health` for deployment health checks. The start command sets
+`CLS_USE_API=0` so queries, uploads, and corpus administration use the same
+embedded backend.
+
+Deploy this branch with Railway's Config File set to `/railway.toml`. If the
+public URL still shows **CLS RAG+CAG API**, check the deployment's source branch
+and config file: it is still starting `uvicorn main:app` instead of Streamlit.
+
+Attach a persistent volume and set `CLS_CHROMA_DIR=/data/chroma_store` (adjust to
+your volume mount). Keep an existing volume and its path to retain its index.
+On the first UI session, an empty store is indexed in the background from
+`CLS_DEFAULT_DOCUMENTS_DIR` (default: `data/training_corpus/test_books`). This is
+enabled by default on Railway; `CLS_BOOTSTRAP_CORPUS=0` disables it. Give initial
+indexing time to finish before searching, or use **Full App > Workspace > Corpus
+admin** to index documents manually.
+
+For a separate API deployment, select `/railway.api.toml` as that service's
+Config File. That service exposes `/docs`, `/health`, and `/v1/*`; the Streamlit
+service exposes the browser UI. Each service should have its own Chroma volume.
+
+### Local API bridge
+
 ```bash
 ./scripts/launch_api.sh
 CLS_USE_API=1 CLS_API_URL=http://127.0.0.1:8010 ./scripts/launch_cls.sh
