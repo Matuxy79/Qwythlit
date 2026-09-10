@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the legacy synthetic multi-pack test corpus for the CLS RAG+CAG stack.
+"""Generate the legacy synthetic multi-pack test corpus for the JLS RAG+CAG stack.
 
 This generator predates the current beamline-scoped corpus layout. It builds six
 large synthetic topic packs, ~100 MB each (5 files per pack), deliberately spread
@@ -19,7 +19,7 @@ Usage
 
 Each synthetic pack lands in <out>/<pack_slug>/. Those slugs are retained for
 legacy regression runs and can still be indexed by scripts/ingest_corpus.py,
-but they do not describe the current CLS beamline taxonomy.
+but they do not describe the current JLS beamline taxonomy.
 """
 
 from __future__ import annotations

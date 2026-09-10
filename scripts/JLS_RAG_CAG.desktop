@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=JLS RAG+CAG
+Comment=Launch the JLS RAG+CAG Streamlit prototype
+Exec=sh -c '"$(dirname "%k")/launch_jls.sh"'
+Icon=applications-science
+Terminal=true
+Categories=Science;Education;

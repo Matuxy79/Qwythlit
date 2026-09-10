@@ -28,10 +28,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from cls_backend.readers import is_supported  # noqa: E402
-from cls_backend.pipeline import EMBED_DIM  # noqa: E402
-from cls_config import RESEARCH_SCOPES  # noqa: E402
-from cls_service import file_signature, ingest_path  # noqa: E402
+from jls_backend.readers import is_supported  # noqa: E402
+from jls_backend.pipeline import EMBED_DIM  # noqa: E402
+from jls_config import RESEARCH_SCOPES  # noqa: E402
+from jls_service import file_signature, ingest_path  # noqa: E402
 
 
 class HashEmbedder:

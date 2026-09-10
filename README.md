@@ -1,14 +1,14 @@
-# CLS Synchrotron Research Query — RAG+CAG Prototype (1.5v)
+# John's Light Source (JLS) Research Query — RAG+CAG Prototype (1.5v)
 
-A Retrieval-Augmented and Cache-Augmented Generation (RAG+CAG) system for the Canadian Light Source (CLS), built with Streamlit, FastAPI, and ChromaDB. Retrieval is gated by CLS beamline metadata so each beamline lane can be queried independently or together.
+A Retrieval-Augmented and Cache-Augmented Generation (RAG+CAG) system for the John's Light Source (JLS), built with Streamlit, FastAPI, and ChromaDB. Retrieval is gated by JLS beamline metadata so each beamline lane can be queried independently or together.
 
-Temporary fast mode is enabled by default: generation is disabled and queries use deterministic keyword retrieval for millisecond lookups on the prototype corpus. Set `CLS_RETRIEVAL_ONLY=0` and `CLS_KEYWORD_ONLY=0` to restore hybrid semantic retrieval plus optional carrier synthesis.
+Temporary fast mode is enabled by default: generation is disabled and queries use deterministic keyword retrieval for millisecond lookups on the prototype corpus. Set `JLS_RETRIEVAL_ONLY=0` and `JLS_KEYWORD_ONLY=0` to restore hybrid semantic retrieval plus optional carrier synthesis.
 
 ## Beamline Scopes
 
 The current app is beamline-scoped, not discipline-scoped. Uploaded documents are tagged from the **Assign a beamline** selector, and the same shared scope map drives both the Full App and Ask Lane.
 
-Choose **All beamlines** to bypass the metadata filter and search the full indexed store. The named scopes currently cover BioXAS-Imaging, BioXAS-Spectroscopy, BMIT, BXDS, CLS@APS, CMCF, EIML, Far-IR, HXMA, IDEAS, Mid-IR, QMSC, REIXS, SGM, SM, SXRMB, SyLMAND, VESPERS, and VLS-PGM.
+Choose **All beamlines** to bypass the metadata filter and search the full indexed store. The named scopes currently cover BioXAS-Imaging, BioXAS-Spectroscopy, BMIT, BXDS, JLS@APS, CMCF, EIML, Far-IR, HXMA, IDEAS, Mid-IR, QMSC, REIXS, SGM, SM, SXRMB, SyLMAND, VESPERS, and VLS-PGM.
 
 ## Architecture
 
@@ -18,8 +18,8 @@ DocuSearch-inspired: retrieval is instant and primary. The grounded extractive a
 | --- | --- | --- |
 | 1 | Streamlit dual-UI (Full App + Ask Lane) | `app.py` |
 | 2 | FastAPI shared bridge | `api.py` |
-| 3 | RAG+CAG instant backend | `cls_service.py`, `cls_backend/pipeline.py` |
-| 4 | Generative carrier | `cls_backend/dllm.py`, `/v1/dllm/*` |
+| 3 | RAG+CAG instant backend | `jls_service.py`, `jls_backend/pipeline.py` |
+| 4 | Generative carrier | `jls_backend/dllm.py`, `/v1/dllm/*` |
 
 ## Two UIs
 
@@ -33,7 +33,7 @@ Both UIs share the same underlying retrieval backend.
 ## Quick Launch
 
 ```bash
-./scripts/launch_cls.sh
+./scripts/launch_jls.sh
 ```
 
 Creates `.venv` if needed, installs packages, and opens the UI at `http://localhost:8501`. Does not start Ollama or pull any LLM.
@@ -41,28 +41,28 @@ Creates `.venv` if needed, installs packages, and opens the UI at `http://localh
 Fast mode defaults:
 
 ```bash
-export CLS_RETRIEVAL_ONLY=1
-export CLS_KEYWORD_ONLY=1
+export JLS_RETRIEVAL_ONLY=1
+export JLS_KEYWORD_ONLY=1
 ```
 
 ### Carrier (optional, Full App synthesis)
 
-Carrier calls are disabled while `CLS_RETRIEVAL_ONLY=1`. To test generation again, set `CLS_RETRIEVAL_ONLY=0` and `CLS_KEYWORD_ONLY=0` before launch.
+Carrier calls are disabled while `JLS_RETRIEVAL_ONLY=1`. To test generation again, set `JLS_RETRIEVAL_ONLY=0` and `JLS_KEYWORD_ONLY=0` before launch.
 
 The carrier is any OpenAI-compatible `/v1/chat/completions` endpoint. Pick one — no code change:
 
 ```bash
 # Cloud (OpenRouter)
-export CLS_DLLM_API_KEY="sk-or-..."
-# export CLS_DLLM_API_URL="https://openrouter.ai/api/v1"   # default
-# export CLS_DLLM_MODEL="openai/gpt-oss-120b"              # default
+export JLS_DLLM_API_KEY="sk-or-..."
+# export JLS_DLLM_API_URL="https://openrouter.ai/api/v1"   # default
+# export JLS_DLLM_MODEL="openai/gpt-oss-120b"              # default
 
 # Local llama.cpp (offline, no key) — run: llama-server -m model.gguf --port 8080
-# export CLS_DLLM_API_URL="http://localhost:8080/v1"
-# unset CLS_DLLM_API_KEY
+# export JLS_DLLM_API_URL="http://localhost:8080/v1"
+# unset JLS_DLLM_API_KEY
 
 # Local Ollama
-# export CLS_DLLM_API_URL="http://localhost:11434/v1"
+# export JLS_DLLM_API_URL="http://localhost:11434/v1"
 ```
 
 Without a carrier the app is fully offline: semantic retrieval + instant cited extraction. The **Ask Lane never uses the carrier** — it is retrieval-only by design.
@@ -74,18 +74,18 @@ Without a carrier the app is fully offline: semantic retrieval + instant cited e
 The default `railway.toml` serves the interactive Streamlit app at `/`, with
 **Full App** and **Ask Lane** on its landing page. It binds to Railway's `PORT`
 and uses `/_stcore/health` for deployment health checks. The start command sets
-`CLS_USE_API=0` so queries, uploads, and corpus administration use the same
+`JLS_USE_API=0` so queries, uploads, and corpus administration use the same
 embedded backend.
 
 Deploy this branch with Railway's Config File set to `/railway.toml`. If the
-public URL still shows **CLS RAG+CAG API**, check the deployment's source branch
+public URL still shows **JLS RAG+CAG API**, check the deployment's source branch
 and config file: it is still starting `uvicorn main:app` instead of Streamlit.
 
-Attach a persistent volume and set `CLS_CHROMA_DIR=/data/chroma_store` (adjust to
+Attach a persistent volume and set `JLS_CHROMA_DIR=/data/chroma_store` (adjust to
 your volume mount). Keep an existing volume and its path to retain its index.
 On the first UI session, an empty store is indexed in the background from
-`CLS_DEFAULT_DOCUMENTS_DIR` (default: `data/training_corpus/test_books`). This is
-enabled by default on Railway; `CLS_BOOTSTRAP_CORPUS=0` disables it. Give initial
+`JLS_DEFAULT_DOCUMENTS_DIR` (default: `data/training_corpus/test_books`). This is
+enabled by default on Railway; `JLS_BOOTSTRAP_CORPUS=0` disables it. Give initial
 indexing time to finish before searching, or use **Full App > Workspace > Corpus
 admin** to index documents manually.
 
@@ -97,7 +97,7 @@ service exposes the browser UI. Each service should have its own Chroma volume.
 
 ```bash
 ./scripts/launch_api.sh
-CLS_USE_API=1 CLS_API_URL=http://127.0.0.1:8010 ./scripts/launch_cls.sh
+JLS_USE_API=1 JLS_API_URL=http://127.0.0.1:8010 ./scripts/launch_jls.sh
 ```
 
 Key endpoints:
@@ -105,7 +105,7 @@ Key endpoints:
 ```text
 GET  /health
 POST /v1/query
-POST /v1/chat/completions   # cls-rag-cag-v1.0; CLS_DLLM_MODEL only when retrieval-only is off
+POST /v1/chat/completions   # cls-rag-cag-v1.0; JLS_DLLM_MODEL only when retrieval-only is off
 GET  /v1/dllm/status
 POST /v1/dllm/chat
 ```
@@ -120,7 +120,7 @@ curl http://127.0.0.1:8010/v1/query \
 
 ## Indexing Documents
 
-- **Workspace -> Corpus admin**: one-click index of the local literature test corpus (`data/training_corpus/test_books` by default; override with `CLS_DEFAULT_DOCUMENTS_DIR`).
+- **Workspace -> Corpus admin**: one-click index of the local literature test corpus (`data/training_corpus/test_books` by default; override with `JLS_DEFAULT_DOCUMENTS_DIR`).
 - **Main page upload panel**: drag-and-drop batch upload of PDF, TXT, MD, DOCX, HTML, CSV, TSV, and JSON with beamline tagging.
 - **`ingest_daemon.py`**: optional batch indexer for folder-watch experiments.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-APP_NAME="CLS Ask Lane (Chainlit)"
+APP_NAME="JLS Ask Lane (Chainlit)"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
 PYTHON_CMD="${PYTHON_CMD:-python3}"
@@ -30,12 +30,12 @@ ensure_requirements() {
 }
 
 load_env() {
-    # Carrier + parrot config (CLS_PARROT_URL/MODEL, CLS_DLLM_*). Gitignored.
-    if [ -f "$ROOT_DIR/cls.env" ]; then
-        say "Loading config from cls.env"
+    # Carrier + parrot config (JLS_PARROT_URL/MODEL, JLS_DLLM_*). Gitignored.
+    if [ -f "$ROOT_DIR/jls.env" ]; then
+        say "Loading config from jls.env"
         set -a
         # shellcheck disable=SC1091
-        . "$ROOT_DIR/cls.env"
+        . "$ROOT_DIR/jls.env"
         set +a
     fi
 }
@@ -44,8 +44,8 @@ say "Preparing launch from $ROOT_DIR"
 load_env
 ensure_venv
 ensure_requirements
-if [ "${CLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${CLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
-    say "The Ask Lane parrot uses the local model at ${CLS_PARROT_URL:-http://localhost:11434/v1} (${CLS_PARROT_MODEL:-qwen2.5:0.5b}). Start Ollama first: ollama serve"
+if [ "${JLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${JLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
+    say "The Ask Lane parrot uses the local model at ${JLS_PARROT_URL:-http://localhost:11434/v1} (${JLS_PARROT_MODEL:-qwen2.5:0.5b}). Start Ollama first: ollama serve"
 else
     say "Retrieval-only mode active. The Ask Lane parrot is disabled."
 fi

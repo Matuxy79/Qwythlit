@@ -1,4 +1,4 @@
-"""Streamlit dual-UI — the browser-facing entry point for the CLS RAG+CAG system.
+"""Streamlit dual-UI — the browser-facing entry point for the JLS RAG+CAG system.
 
 Two UIs are served from this single file, selected on the landing page:
 
@@ -10,15 +10,15 @@ Two UIs are served from this single file, selected on the landing page:
   Ask Lane  — a fast, minimal chat interface for non-technical users.  No LLM,
                no engineering telemetry — instant retrievaland cited bullets only.
 
-Both UIs call the same backend via ``cls_service.py``.  All retrieval, ranking,
-CAG cache look-up, and answer assembly happen there and in ``cls_backend/``; this
+Both UIs call the same backend via ``jls_service.py``.  All retrieval, ranking,
+CAG cache look-up, and answer assembly happen there and in ``jls_backend/``; this
 file is pure presentation.
 
-Key environment switches (set in ``cls.env`` before launch):
-    JS_RETRIEVAL_ONLY=1  — disables the generative carrier (default ON).
-    CLS_KEYWORD_ONLY=1    — disables semantic vector search; lexical only (default ON).
+Key environment switches (set in ``jls.env`` before launch):
+    JLS_RETRIEVAL_ONLY=1  — disables the generative carrier (default ON).
+    JLS_KEYWORD_ONLY=1    — disables semantic vector search; lexical only (default ON).
 
-Start the app:  ./scripts/launch_cls.sh   (creates .venv, installs deps, opens browser)
+Start the app:  ./scripts/launch_jls.sh   (creates .venv, installs deps, opens browser)
 """
 
 from __future__ import annotations
@@ -33,8 +33,8 @@ import urllib.request
 
 import streamlit as st
 
-from cls_backend.bootstrap import start_corpus_bootstrap
-from cls_config import (
+from jls_backend.bootstrap import start_corpus_bootstrap
+from jls_config import (
     APP_ROOT,
     APP_VERSION,
     DEFAULT_API_URL,
@@ -46,7 +46,7 @@ from cls_config import (
     RETRIEVAL_ONLY,
     add_research_scope,
 )
-from cls_service import (
+from jls_service import (
     ask_manual,
     call_dllm_api,
     collection_count,
@@ -65,7 +65,7 @@ from cls_service import (
     uploaded_signature,
     warm_keyword_index,
 )
-from cls_backend.dllm import (
+from jls_backend.dllm import (
     CORRECTION_SYSTEM,
     answer_numbers_grounded,
     correction_user,
@@ -73,7 +73,7 @@ from cls_backend.dllm import (
     parse_bullets,
     validate_correction,
 )
-from cls_backend.spectrum import (
+from jls_backend.spectrum import (
     HUE_AMBER,
     HUE_GREEN,
     HUE_ORANGE,
@@ -83,7 +83,7 @@ from cls_backend.spectrum import (
     decorate,
     glow_css,
 )
-from cls_backend.query_repair import repair_query
+from jls_backend.query_repair import repair_query
 
 
 # --------------------------------------------------------------------------- #
@@ -114,7 +114,7 @@ def _role_has(role_name: str, capability: str) -> bool:
     (e.g. inside the role-agnostic Ask Lane, which still reads st.session_state)."""
     return capability in ROLES.get(role_name, {}).get("caps", set())
 # Architecture: retrieval is primary. During the temporary speed-first phase,
-# JS_RETRIEVAL_ONLY disables every LLM augmentation path and CLS_KEYWORD_ONLY skips
+# JLS_RETRIEVAL_ONLY disables every LLM augmentation path and JLS_KEYWORD_ONLY skips
 # semantic query embedding for deterministic keyword retrieval.
 DLLM_MODEL = DEFAULT_DLLM_MODEL
 
@@ -146,18 +146,18 @@ def render_evidence_store(rows: list[dict]) -> None:
         else:
             meta = ""
         blocks.append(
-            '<div class="cls-evrow">'
-            '<div class="cls-evhead">'
-            f'<span class="cls-evname">📄 {html.escape(str(r["source"]))}</span>'
-            f'<span class="cls-evcount">{r["chunks"]} chunks</span></div>'
-            f'<div class="cls-evtrack"><div class="cls-evfill" style="width:{pct}%"></div></div>'
-            f'<div class="cls-evmeta">{meta}</div></div>'
+            '<div class="jls-evrow">'
+            '<div class="jls-evhead">'
+            f'<span class="jls-evname">📄 {html.escape(str(r["source"]))}</span>'
+            f'<span class="jls-evcount">{r["chunks"]} chunks</span></div>'
+            f'<div class="jls-evtrack"><div class="jls-evfill" style="width:{pct}%"></div></div>'
+            f'<div class="jls-evmeta">{meta}</div></div>'
         )
     st.markdown("".join(blocks), unsafe_allow_html=True)
 
 
 API_URL = DEFAULT_API_URL.rstrip("/")
-USE_API_BACKEND = os.getenv("JS_USE_API", "0").strip().lower() in {"1", "true", "yes", "on"}
+USE_API_BACKEND = any(os.getenv(v, "0").strip().lower() in {"1", "true", "yes", "on"} for v in ("JLS_USE_API", "JS_USE_API", "CLS_USE_API"))
 
 
 @st.cache_resource(show_spinner=False)
@@ -198,7 +198,7 @@ def get_json(path: str, timeout: float = 2.0) -> dict:
         return {}
 
 
-# RESEARCH_SCOPES now lives in cls_config (shared across frontends); imported below.
+# RESEARCH_SCOPES now lives in jls_config (shared across frontends); imported below.
 
 
 def query_backend(query: str, top_k: int, cache_enabled: bool, min_similarity: float, metadata_filter: dict | None = None, debate_enabled: bool = False) -> dict:
@@ -311,7 +311,7 @@ def retrieval_evidence_summary(rows: list[dict]) -> tuple[str, bool]:
 
 def _answer_card_html(sentences: list[str], category: str, query: str, hue: str, glow: str) -> str:
     """Build the deterministic extraction answer card as a single HTML block."""
-    card_open = f'<div class="cls-answer" style="--hue:{hue};--glow:{glow}">'
+    card_open = f'<div class="jls-answer" style="--hue:{hue};--glow:{glow}">'
     body = "<br>".join(f"• {decorate(s, category, query)}" for s in sentences)
     return f"{card_open}{body}</div>"
 
@@ -396,16 +396,16 @@ def render_answer_component(
     answer_placeholder = st.empty()
     if extraction_sentences:
         answer_placeholder.markdown(
-            '<span class="cls-badge" style="--hue:#6fd58a">⚡ Deterministic extraction · RAG/CAG</span>'
+            '<span class="jls-badge" style="--hue:#6fd58a">⚡ Deterministic extraction · RAG/CAG</span>'
             + _answer_card_html(extraction_sentences, category, stored_query, hue, glow)
-            + f'<div class="cls-mode-note">{extraction_caption}</div>',
+            + f'<div class="jls-mode-note">{extraction_caption}</div>',
             unsafe_allow_html=True,
         )
     else:
         synth_answered = synth.get("status") == "done" and bool(synth.get("text"))
         if not synth_answered:
             answer_placeholder.markdown(
-                '<div class="cls-mode-note">The indexed documents don\'t contain a direct passage for this — '
+                '<div class="jls-mode-note">The indexed documents don\'t contain a direct passage for this — '
                 'the retrieval evidence below shows the closest matches.</div>',
                 unsafe_allow_html=True,
             )
@@ -425,10 +425,10 @@ def render_answer_component(
              "name the source document and page directly."
     )
     st.markdown(
-        '<div class="cls-evidence-strip">'
-        '<div class="cls-evidence-title">Chroma-ranked evidence rows, not model output</div>'
-        f'<div class="cls-evidence-copy">{evidence_summary}</div>'
-        f'<div class="cls-evidence-copy">{citation_note}</div>'
+        '<div class="jls-evidence-strip">'
+        '<div class="jls-evidence-title">Chroma-ranked evidence rows, not model output</div>'
+        f'<div class="jls-evidence-copy">{evidence_summary}</div>'
+        f'<div class="jls-evidence-copy">{citation_note}</div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -446,7 +446,7 @@ def render_answer_component(
         )
         with st.expander(label, expanded=index <= 2):
             st.markdown(
-                f'<div class="cls-snippet">{decorate(row["document"], category, hit_terms)}</div>',
+                f'<div class="jls-snippet">{decorate(row["document"], category, hit_terms)}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -987,23 +987,23 @@ def _home_gate() -> None:
     _, col, _ = st.columns([1, 1.6, 1])
     with col:
         st.markdown(
-            f"""<div class="cls-hero" style="text-align:center;padding:1.6rem 1.5rem 1.3rem">
+            f"""<div class="jls-hero" style="text-align:center;padding:1.6rem 1.5rem 1.3rem">
               <h1 style="font-size:clamp(1.5rem,3vw,2rem)">🔬 John's Synchrotron</h1>
               <p style="margin-bottom:0.2rem">Choose how you want to work today.</p>
-              <div class="cls-spectrum-rule" style="margin-top:0.9rem"></div>
+              <div class="jls-spectrum-rule" style="margin-top:0.9rem"></div>
             </div>""",
             unsafe_allow_html=True,
         )
 
         st.markdown(
             """<style>
-            .cls-mode-card {
+            .jls-mode-card {
                 border-radius:14px; padding:1.2rem 1.3rem; margin:0.6rem 0;
                 background:var(--panel); border:1px solid var(--line);
                 box-shadow:0 6px 20px rgba(120,80,60,0.08);
             }
-            .cls-mode-card h4 { margin:0 0 0.3rem; font-size:1.1rem; color:var(--ink); }
-            .cls-mode-card p  { margin:0; font-size:0.88rem; color:var(--muted); line-height:1.45; }
+            .jls-mode-card h4 { margin:0 0 0.3rem; font-size:1.1rem; color:var(--ink); }
+            .jls-mode-card p  { margin:0; font-size:0.88rem; color:var(--muted); line-height:1.45; }
             </style>""",
             unsafe_allow_html=True,
         )
@@ -1011,7 +1011,7 @@ def _home_gate() -> None:
         left_card, right_card = st.columns(2, gap="medium")
         with left_card:
             st.markdown(
-                '<div class="cls-mode-card">'
+                '<div class="jls-mode-card">'
                 '<h4>🛡 Full App</h4>'
                 '<p>Admin &amp; User roles — corpus admin, upload, eval, and precision controls.</p>'
                 '</div>',
@@ -1022,7 +1022,7 @@ def _home_gate() -> None:
                 st.rerun()
         with right_card:
             st.markdown(
-                '<div class="cls-mode-card">'
+                '<div class="jls-mode-card">'
                 '<h4>💬 Ask Lane</h4>'
                 '<p>Clean ask-and-read surface — just type a question and get a cited answer.</p>'
                 '</div>',
@@ -1090,44 +1090,44 @@ st.markdown(
         letter-spacing: 0;
         font-weight: 760;
       }
-      .cls-spectrum-rule {
+      .jls-spectrum-rule {
         height: 5px; border-radius: 999px; margin: 0.15rem 0 0;
         background: linear-gradient(90deg,var(--rose),var(--orange),var(--amber),var(--green),var(--blue),#b478ff);
       }
-      .cls-hero {
+      .jls-hero {
         border-radius: 14px; padding: 1.15rem 1.35rem 1rem; margin-bottom: 1.25rem;
         background: var(--panel);
         border: 1px solid var(--line);
         box-shadow: 0 8px 26px rgba(120,80,60,0.08);
       }
-      .cls-hero h1 {
+      .jls-hero h1 {
         margin: 0;
         font-size: clamp(1.45rem, 2vw, 1.85rem);
         color: var(--ink) !important;
       }
-      .cls-hero p  {
+      .jls-hero p  {
         margin: 0.3rem 0 0.7rem;
         color: var(--muted) !important;
         font-size: 0.95rem;
       }
-      .cls-badge {
+      .jls-badge {
         display: inline-flex; align-items: center; gap: 0.4rem;
         padding: 0.22rem 0.66rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700;
         color: #3a2a2e; background: color-mix(in srgb, var(--hue) 16%, #ffffff);
         border: 1px solid color-mix(in srgb, var(--hue) 55%, #ffffff);
       }
       /* Role tier separator — sidebar card + hero chip share the --role accent. */
-      .cls-rolecard {
+      .jls-rolecard {
         border-radius: 12px; padding: 0.7rem 0.85rem; margin: 0.1rem 0 1rem;
         background: color-mix(in srgb, var(--role) 12%, #ffffff);
         border: 1px solid color-mix(in srgb, var(--role) 42%, #ffffff);
         border-left: 5px solid var(--role);
       }
-      .cls-rolehead { font-weight: 800; font-size: 1.04rem; color: #2a1d20; }
-      .cls-roletag { font-size: 0.8rem; color: var(--muted); margin-top: 0.18rem; line-height: 1.35; }
-      .cls-rolelock { color: var(--faint); font-size: 0.82rem; margin: 0.1rem 0 0.4rem; }
+      .jls-rolehead { font-weight: 800; font-size: 1.04rem; color: #2a1d20; }
+      .jls-roletag { font-size: 0.8rem; color: var(--muted); margin-top: 0.18rem; line-height: 1.35; }
+      .jls-rolelock { color: var(--faint); font-size: 0.82rem; margin: 0.1rem 0 0.4rem; }
 
-      .cls-answer {
+      .jls-answer {
         border-radius: 12px; padding: 1.05rem 1.2rem; margin-top: 0.4rem;
         background: var(--panel);
         border: 1px solid var(--line);
@@ -1135,29 +1135,29 @@ st.markdown(
         box-shadow: var(--glow, 0 6px 22px rgba(120,80,60,0.10));
         color: var(--ink); line-height: 1.6;
       }
-      .cls-statusline {
+      .jls-statusline {
         display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem;
         margin: 0.1rem 0 0.65rem;
       }
-      .cls-mode-note {
+      .jls-mode-note {
         color: var(--muted); font-size: 0.86rem; line-height: 1.45;
         margin: 0.25rem 0 0.65rem;
       }
-      .cls-evidence-strip {
+      .jls-evidence-strip {
         border-radius: 10px; padding: 0.72rem 0.82rem; margin: 0.25rem 0 0.7rem;
         background: #f7fbff;
         border: 1px solid #d9e8f6;
         border-left: 5px solid var(--blue);
         line-height: 1.45;
       }
-      .cls-evidence-title {
+      .jls-evidence-title {
         font-weight: 800; color: var(--ink); margin-bottom: 0.15rem;
       }
-      .cls-evidence-copy {
+      .jls-evidence-copy {
         color: var(--muted); font-size: 0.86rem;
       }
-      .cls-answer code { color: #b8541a; background: #fbeee4; padding: 0 0.3em; border-radius: 5px; }
-      .cls-q { color: var(--muted); font-style: italic; font-size: 0.92rem; }
+      .jls-answer code { color: #b8541a; background: #fbeee4; padding: 0 0.3em; border-radius: 5px; }
+      .jls-q { color: var(--muted); font-style: italic; font-size: 0.92rem; }
       div[data-testid="stMetricValue"] { color: var(--ink) !important; }
       div[data-testid="stMetricDelta"] { color: var(--muted) !important; }
       .tok { border-radius: 6px; padding: 0 0.28em; font-weight: 600; }
@@ -1167,27 +1167,27 @@ st.markdown(
       /* DocuSearch-style query-term hit highlight. */
       .tok-hit    { color: #1f6b38; background: #d6f3df; box-shadow: inset 0 0 0 1px rgba(47,158,87,0.45); }
       mark.tok-hit { color: #1f6b38; }
-      .cls-snippet {
+      .jls-snippet {
         white-space: pre-wrap; word-break: break-word;
         color: #4a3a3e; font-size: 0.9rem; line-height: 1.5;
       }
 
       /* Evidence Store visualization — one bar per indexed document. */
-      .cls-evrow { margin: 0.55rem 0 0.75rem; }
-      .cls-evhead {
+      .jls-evrow { margin: 0.55rem 0 0.75rem; }
+      .jls-evhead {
         display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
       }
-      .cls-evname { font-weight: 650; color: var(--ink); font-size: 0.92rem; word-break: break-word; }
-      .cls-evcount { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
-      .cls-evtrack {
+      .jls-evname { font-weight: 650; color: var(--ink); font-size: 0.92rem; word-break: break-word; }
+      .jls-evcount { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+      .jls-evtrack {
         height: 8px; border-radius: 999px; background: #efe4dc;
         margin: 0.32rem 0 0.18rem; overflow: hidden;
       }
-      .cls-evfill {
+      .jls-evfill {
         height: 100%; border-radius: 999px;
         background: linear-gradient(90deg, var(--rose), var(--orange), var(--amber));
       }
-      .cls-evmeta { color: var(--faint); font-size: 0.78rem; }
+      .jls-evmeta { color: var(--faint); font-size: 0.78rem; }
 
       section[data-testid="stSidebar"] {
         background: var(--panel) !important;
@@ -1279,7 +1279,7 @@ st.markdown(
       }
 
             /* Floating back dock — minimal cross-mode control, independent of role/UI HUD state. */
-            .cls-backdock {
+            .jls-backdock {
                 position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 9999;
                 display: flex; align-items: center; gap: 0.45rem;
                 padding: 0.3rem; border-radius: 999px;
@@ -1289,7 +1289,7 @@ st.markdown(
                 box-shadow: 0 10px 28px rgba(120,80,60,0.14);
                 user-select: none;
             }
-            .cls-backgrip {
+            .jls-backgrip {
                 display: inline-flex; align-items: center; justify-content: center;
                 width: 1.55rem; height: 1.55rem;
                 border-radius: 999px;
@@ -1299,11 +1299,11 @@ st.markdown(
                 cursor: grab;
                 font-size: 0.8rem; line-height: 1;
             }
-            .cls-backgrip:active {
+            .jls-backgrip:active {
                 cursor: grabbing;
                 background: #efe8df;
             }
-            .cls-backbtn {
+            .jls-backbtn {
                 display: inline-flex; align-items: center; justify-content: center;
                 min-height: 1.55rem; padding: 0 0.8rem;
                 border-radius: 999px;
@@ -1313,7 +1313,7 @@ st.markdown(
                 font-size: 0.86rem; font-weight: 600;
                 text-decoration: none !important;
             }
-            .cls-backbtn:hover {
+            .jls-backbtn:hover {
                 background: #fff8f2;
                 border-color: var(--accent);
                 color: var(--accent) !important;
@@ -1362,11 +1362,11 @@ st.markdown(
 
 st.markdown(
     f"""
-    <div class="cls-hero">
+    <div class="jls-hero">
       <h1>🔬 John's Synchrotron <span style="opacity:0.55;font-size:1rem;">{APP_VERSION}</span>
-        &nbsp;<span class="cls-badge" style="--hue:{role_accent}">{role_meta['glyph']} {active_role}</span></h1>
+        &nbsp;<span class="jls-badge" style="--hue:{role_accent}">{role_meta['glyph']} {active_role}</span></h1>
       <p>Cited answers from indexed facility manuals and research documents.</p>
-      <div class="cls-spectrum-rule"></div>
+      <div class="jls-spectrum-rule"></div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -1427,9 +1427,9 @@ def _render_corpus_admin() -> None:
     """Admin-only path: index every supported document in the default directory.
 
     The default points at the local literature test corpus unless overridden by
-    CLS_DEFAULT_DOCUMENTS_DIR.
+    JLS_DEFAULT_DOCUMENTS_DIR.
     """
-    from cls_backend.readers import is_supported
+    from jls_backend.readers import is_supported
 
     st.header("One-click corpus")
     if DEFAULT_DOCUMENTS_DIR.exists():
@@ -1595,9 +1595,9 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown(
-        f'<div class="cls-rolecard" style="--role:{role_accent}">'
-        f'<div class="cls-rolehead">{role_meta["glyph"]} {active_role}</div>'
-        f'<div class="cls-roletag">{role_meta["tagline"]}</div></div>',
+        f'<div class="jls-rolecard" style="--role:{role_accent}">'
+        f'<div class="jls-rolehead">{role_meta["glyph"]} {active_role}</div>'
+        f'<div class="jls-roletag">{role_meta["tagline"]}</div></div>',
         unsafe_allow_html=True,
     )
 
@@ -1691,7 +1691,7 @@ if role_can("index") or active_role != "User" or role_can("dllm"):
             st.subheader("💬 Inference carrier")
             if RETRIEVAL_ONLY:
                 st.caption(dllm_endpoint.get("detail", "Carrier offline — retrieval evidence and extraction still work."))
-                st.caption("Set `JS_RETRIEVAL_ONLY=0` before launch to re-enable generation.")
+                st.caption("Set `JLS_RETRIEVAL_ONLY=0` before launch to re-enable generation.")
             else:
                 st.caption(
                     f"{carrier_name} · {DLLM_MODEL}. The carrier writes the optional synthesis only; "
@@ -1759,7 +1759,7 @@ with left:
     live_cat = classify_query(query)
     live_meta = category_meta(live_cat)
     st.markdown(
-        f'<span class="cls-badge" style="--hue:{live_meta["hue"]}">'
+        f'<span class="jls-badge" style="--hue:{live_meta["hue"]}">'
         f'{live_meta["glyph"]} {live_meta["label"]}</span>',
         unsafe_allow_html=True,
     )

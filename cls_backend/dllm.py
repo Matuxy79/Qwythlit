@@ -115,10 +115,25 @@ def citations_preserved(text: str, sentences: list[str]) -> bool:
     return all(cite in text for cite in source_cites) and len(output_cites) == len(source_cites)
 
 
-def validate_correction(text: str, sentences: list[str]) -> bool:
-    """The trust contract: a correction is only shown if it invented no numbers and kept
-    every citation verbatim. Otherwise the instant grounded extraction stands."""
-    return numbers_grounded(text, sentences) and citations_preserved(text, sentences)
+def numbers_preserved(text: str, sentences: list[str]) -> bool:
+    """Every multi-digit number in the source sentences must survive in the correction."""
+    source_digits = set(tok for tok in re.findall(r"\d+", " ".join(sentences)) if len(tok) >= 3)
+    output_digits = set(re.findall(r"\d+", text))
+    return source_digits.issubset(output_digits)
+
+
+def validate_correction(text: str | list[str], sentences: list[str]) -> bool:
+    """The trust contract: a correction is only shown if it invented no numbers, dropped no
+    source numbers, and kept every citation verbatim. Otherwise the instant grounded extraction stands."""
+    if isinstance(text, (list, tuple)):
+        text = " ".join(text)
+    if not text.strip():
+        return False
+    return (
+        numbers_grounded(text, sentences)
+        and numbers_preserved(text, sentences)
+        and citations_preserved(text, sentences)
+    )
 
 
 # --- Generative RAG answer -------------------------------------------------------------- #

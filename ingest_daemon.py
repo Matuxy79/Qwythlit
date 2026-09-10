@@ -34,8 +34,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from cls_backend.readers import SUPPORTED_SUFFIXES
-from cls_service import file_signature, ingest_path
+from jls_backend.readers import SUPPORTED_SUFFIXES
+from jls_service import file_signature, ingest_path
 
 
 def load_sidecar_metadata(path: Path) -> dict[str, Any]:

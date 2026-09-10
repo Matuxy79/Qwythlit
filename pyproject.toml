@@ -6,28 +6,28 @@ build-backend = "setuptools.build_meta"
 # Project metadata
 # ---------------------------------------------------------------------------
 [project]
-name            = "cls-rag-cag"
-version         = "1.2.0"
-description     = "RAG+CAG information-retrieval chatbot for the Canadian Light Source synchrotron — beamline-scoped, corpus-ephemeral, built from the ground up on Streamlit + ChromaDB."
+name            = "jls-rag-cag"
+version         = "1.3.0"
+description     = "RAG+CAG information-retrieval chatbot for John's Light Source (JLS) synchrotron — discipline-scoped, built on Streamlit + ChromaDB."
 readme          = "README.md"
 license         = { text = "MIT" }
 requires-python = ">=3.10"
 
 authors = [
-    { name = "John Matukutiree", email = "matukuj@lightsource.ca" },
+    { name = "John Matukutiree" },
 ]
 
 keywords = [
     "RAG",
     "CAG",
     "ChromaDB",
-    "Canadian Light Source",
+    "John's Light Source",
+    "JLS",
     "synchrotron",
     "retrieval-augmented generation",
     "streamlit",
     "fastapi",
     "sentence-transformers",
-    "beamline",
 ]
 
 classifiers = [
@@ -44,9 +44,6 @@ classifiers = [
 ]
 
 # Runtime dependencies — mirrors requirements.txt exactly.
-# The data/corpus/ tree is intentionally ephemeral: the custom launcher
-# (scripts/launch_cls.sh) and ingest_daemon.py manage corpus population
-# at runtime; nothing under data/ is packaged or installed.
 dependencies = [
     "streamlit",
     "chainlit",
@@ -61,16 +58,15 @@ dependencies = [
 
 [project.urls]
 "Personal GitHub"       = "https://github.com/Matuxy79/The-ChromaDB"
-"CLS Repository"        = "https://github.lightsource.ca/matukuj/AI-Lightsource-student-summer"
 "Bug Tracker"           = "https://github.com/Matuxy79/The-ChromaDB/issues"
 
 # ---------------------------------------------------------------------------
-# Package discovery — only cls_backend/ is a real importable package;
+# Package discovery — jls_backend/ and cls_backend/ (shim) are real importable packages;
 # everything else (app.py, api.py, …) is top-level application scripts.
 # ---------------------------------------------------------------------------
 [tool.setuptools.packages.find]
 where   = ["."]
-include = ["cls_backend*"]
+include = ["jls_backend*", "cls_backend*"]
 
 # ---------------------------------------------------------------------------
 # Test configuration

@@ -18,9 +18,9 @@ import os
 import chainlit as cl
 from chainlit.input_widget import Select
 
-from cls_config import APP_VERSION, KEYWORD_ONLY_RETRIEVAL, RESEARCH_SCOPES, RETRIEVAL_ONLY
-from cls_backend.query_repair import repair_query
-from cls_service import ask_manual
+from jls_config import APP_VERSION, KEYWORD_ONLY_RETRIEVAL, RESEARCH_SCOPES, RETRIEVAL_ONLY
+from jls_backend.query_repair import repair_query
+from jls_service import ask_manual
 
 
 def _match_badge(result: dict) -> str:
@@ -51,7 +51,7 @@ def _sources(rows: list[dict]) -> list[str]:
     return items
 
 
-_STREAMLIT_URL = os.getenv("JS_STREAMLIT_URL", "http://localhost:8501")
+_STREAMLIT_URL = os.getenv("JLS_STREAMLIT_URL") or os.getenv("JS_STREAMLIT_URL") or os.getenv("CLS_STREAMLIT_URL", "http://localhost:8501")
 
 
 @cl.on_chat_start

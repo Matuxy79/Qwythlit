@@ -50,9 +50,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from cls_config import APP_VERSION, DEFAULT_DLLM_MODEL, KEYWORD_ONLY_RETRIEVAL, RETRIEVAL_ONLY
-from cls_backend.bootstrap import start_corpus_bootstrap
-from cls_service import (
+from jls_config import APP_VERSION, DEFAULT_DLLM_MODEL, KEYWORD_ONLY_RETRIEVAL, RETRIEVAL_ONLY
+from jls_backend.bootstrap import start_corpus_bootstrap
+from jls_service import (
     answer_text,
     ask_manual,
     call_dllm_api,
@@ -61,7 +61,8 @@ from cls_service import (
     service_status,
 )
 
-CLS_RAG_MODEL = "cls-rag-cag-v1.0"
+JLS_RAG_MODEL = "jls-rag-cag-v1.0"
+CLS_RAG_MODEL = JLS_RAG_MODEL
 
 
 @asynccontextmanager
@@ -71,16 +72,17 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="John's Synchrotron API",
+    title="John's Light Source (JLS) API",
     version=APP_VERSION,
     description="Shared RAG API plus inference carrier proxy for Streamlit, Chainlit, and OpenAI-compatible frontends.",
     lifespan=lifespan,
 )
 # CORS: local frontends always allowed; when deployed (Railway injects
 # RAILWAY_PUBLIC_DOMAIN / the service URL), the platform's own origin and any
-# https origin listed in CLS_CORS_ORIGINS are added so browser clients on the
+# https origin listed in JLS_CORS_ORIGINS are added so browser clients on the
 # public domain are not blocked.
-_EXTRA_ORIGINS = [o.strip() for o in os.getenv("JS_CORS_ORIGINS", "").split(",") if o.strip()]
+_cors_var = os.getenv("JLS_CORS_ORIGINS") or os.getenv("JS_CORS_ORIGINS") or os.getenv("CLS_CORS_ORIGINS", "")
+_EXTRA_ORIGINS = [o.strip() for o in _cors_var.split(",") if o.strip()]
 _RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "") or os.getenv("RAILWAY_DOMAIN", "")
 if _RAILWAY_DOMAIN:
     _EXTRA_ORIGINS.append(f"https://{_RAILWAY_DOMAIN}")
@@ -227,10 +229,10 @@ def ingest_default(request: IngestDefaultRequest = IngestDefaultRequest()) -> di
 def models() -> dict[str, Any]:
     data = [
         {
-            "id": CLS_RAG_MODEL,
+            "id": JLS_RAG_MODEL,
             "object": "model",
             "created": 0,
-            "owned_by": "js",
+            "owned_by": "jls",
         },
     ]
     if not RETRIEVAL_ONLY:

@@ -5,7 +5,7 @@ segment UUID that a live collection references, then deletes any sub-directory
 inside chroma_store/ that is NOT in that set.
 
 Both the Full App (app.py) and the Ask Lane (chat_lane.py) share the same two
-collections (cls_v2_evidence + cls_v2_cag_cache), so this script preserves
+collections (jls_v2_evidence + jls_v2_cag_cache), so this script preserves
 whatever is live for both UIs.
 
 Usage

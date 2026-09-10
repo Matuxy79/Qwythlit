@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-APP_NAME="CLS RAG+CAG API"
+APP_NAME="JLS RAG+CAG API"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$ROOT_DIR/.venv"
 PYTHON_CMD="${PYTHON_CMD:-python3}"
@@ -46,13 +46,13 @@ ensure_requirements() {
 }
 
 load_env() {
-    # Match launch_cls.sh: auto-source local carrier config so FastAPI bridge mode
+    # Match launch_jls.sh: auto-source local carrier config so FastAPI bridge mode
     # sees the same OpenRouter key/model as the Streamlit embedded path.
-    if [ -f "$ROOT_DIR/cls.env" ]; then
-        say "Loading config from cls.env"
+    if [ -f "$ROOT_DIR/jls.env" ]; then
+        say "Loading config from jls.env"
         set -a
         # shellcheck disable=SC1091
-        . "$ROOT_DIR/cls.env"
+        . "$ROOT_DIR/jls.env"
         set +a
     fi
 }
@@ -63,11 +63,11 @@ pick_python
 ensure_venv
 ensure_requirements
 
-if [ "${CLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${CLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
-    if [ -n "${CLS_DLLM_API_URL:-}" ]; then
-        say "Inference carrier endpoint: $CLS_DLLM_API_URL"
+if [ "${JLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${JLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
+    if [ -n "${JLS_DLLM_API_URL:-}" ]; then
+        say "Inference carrier endpoint: $JLS_DLLM_API_URL"
     else
-        say "Using default inference carrier endpoint unless overridden by CLS_DLLM_API_URL."
+        say "Using default inference carrier endpoint unless overridden by JLS_DLLM_API_URL."
     fi
 else
     say "Retrieval-only mode active; carrier proxy endpoints are disabled."
