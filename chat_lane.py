@@ -63,8 +63,8 @@ async def start():
     cl.user_session.set("scope", scopes[0])
     await cl.Message(
         content=(
-            f"### 🔬 John's Synchrotron `{APP_VERSION}`\n"
-            "Ask a question — instant cited answers from your indexed documents. "
+            f"### 🌈 Qwythlit Ask Lane · John's Synchrotron `{APP_VERSION}`\n"
+            "**Ask the knowledge layer** — instant cited answers from your indexed documents with pulse retrieval. "
             + (
                 "Temporary retrieval-only mode is active; no model answer will run."
                 if RETRIEVAL_ONLY
@@ -87,24 +87,35 @@ async def on_message(message: cl.Message):
 
     scope = cl.user_session.get("scope") or "All"
     mfilter = RESEARCH_SCOPES.get(scope)
-    search = repair_query(query)["search"]
 
-    # ── RAG/CAG engine — instant grounded answer, no LLM wait ────
-    result = await cl.make_async(ask_manual)(
-        search,
-        top_k=16,
-        metadata_filter=mfilter,
-        keyword_only=KEYWORD_ONLY_RETRIEVAL,
-    )
-    rows   = result.get("rows") or []
-    answer = result.get("answer") or []
+    # ── 01 · Parse (intent + context) ───────────────────────────
+    async with cl.Step(name="01 · Parse", type="tool") as step1:
+        repaired = repair_query(query)
+        search = repaired["search"]
+        step1.output = f"intent + context parsed (search: '{search}', scope: {scope})"
+
+    # ── 02 · Retrieve (graph + chunks) ──────────────────────────
+    async with cl.Step(name="02 · Retrieve", type="tool") as step2:
+        result = await cl.make_async(ask_manual)(
+            search,
+            top_k=16,
+            metadata_filter=mfilter,
+            keyword_only=KEYWORD_ONLY_RETRIEVAL,
+        )
+        rows   = result.get("rows") or []
+        answer = result.get("answer") or []
+        step2.output = f"retrieved {len(rows)} evidence chunks from synchrotron store"
 
     if not rows:
-        await cl.Message(content="_Nothing relevant found — try rephrasing._").send()
+        await cl.Message(content="_Nothing relevant found in synchrotron evidence — try rephrasing._").send()
         return
 
+    # ── 03 · Weave (grounded answer) ────────────────────────────
     badge   = _match_badge(result)
     sources = _sources(rows)
+    async with cl.Step(name="03 · Weave", type="tool") as step3:
+        step3.output = f"grounded answer lattice woven ({badge})"
+
     p1 = cl.Message(content=f"**{badge}**\n\n{_grounded_bullets(answer)}")
     if sources:
         p1.elements = [

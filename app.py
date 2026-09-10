@@ -84,6 +84,7 @@ from jls_backend.spectrum import (
     glow_css,
 )
 from jls_backend.query_repair import repair_query
+from qwythlit_pane import QWYTHLIT_PANE_CSS, render_qwythlit_header_card
 
 
 # --------------------------------------------------------------------------- #
@@ -793,24 +794,63 @@ def _render_scope_summary(scope: str, result: dict | None, *, dllm_online: bool)
                 st.caption("_Nothing relevant found — try rephrasing._")
 
 
+def _render_floating_q_launcher(current_mode: str) -> None:
+    """Floating Q launcher widget in bottom-right corner with glowing rainbow border."""
+    st.markdown(
+        """
+        <style>
+        div.st-key-float_q_launcher {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            z-index: 999999 !important;
+            width: 56px !important;
+            height: 56px !important;
+        }
+        div.st-key-float_q_launcher button {
+            width: 56px !important;
+            height: 56px !important;
+            border-radius: 18px !important;
+            background: #090c22 !important;
+            border: 2px solid transparent !important;
+            background-image: linear-gradient(#090c22, #090c22), conic-gradient(from 180deg, #ff5e36, #ffbe0b, #00f4d2, #3a86ff, #a855f7, #ff5e36) !important;
+            background-origin: border-box !important;
+            background-clip: content-box, border-box !important;
+            box-shadow: 0 0 28px rgba(122, 92, 255, 0.55), 0 8px 24px rgba(0,0,0,0.6) !important;
+            color: #ffffff !important;
+            font-size: 1.45rem !important;
+            font-weight: 900 !important;
+            font-family: 'Outfit', 'Inter', sans-serif !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+        }
+        div.st-key-float_q_launcher button:hover {
+            transform: scale(1.12) translateY(-2px) !important;
+            box-shadow: 0 0 42px rgba(122, 92, 255, 0.85), 0 14px 32px rgba(0,0,0,0.75) !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    target = "ask_lane" if current_mode != "ask_lane" else "full"
+    tip = "Open Qwythlit Ask Lane" if current_mode != "ask_lane" else "Return to Full App"
+    if st.button("Q", key="float_q_launcher", help=tip):
+        st.session_state["ui_mode"] = target
+        st.rerun()
+
+
 def _render_ask_lane() -> None:
-    """Chat lane over instant RAG/CAG extraction."""
+    """Cinematic Qwythlit animated Ask Lane over instant RAG/CAG extraction."""
     dllm_online = dllm_api_status().get("online", False)
     dllm_model = dllm_api_status().get("model", DLLM_MODEL) if dllm_online else None
 
-    if RETRIEVAL_ONLY:
-        pass2_label = "keyword retrieval only" if KEYWORD_ONLY_RETRIEVAL else "retrieval only"
-    else:
-        pass2_label = "RAG/CAG + AI augmentation" if dllm_online else "RAG/CAG · extractive only"
-    st.markdown(
-        _BRIGHT_LANE_CSS +
-        f"""<div class="lane-hero">
-          <h1>🔬 John's Synchrotron <span style="opacity:0.4;font-size:1rem">{APP_VERSION}</span></h1>
-          <p>Ask a question — {pass2_label}.</p>
-          <div class="lane-rule"></div>
-        </div>""",
-        unsafe_allow_html=True,
-    )
+    # Inject cinematic Qwythlit styling: cosmic dark canvas, glowing particle familiar,
+    # synchrotron spectral beam pulse, and glassmorphism cards.
+    st.markdown(QWYTHLIT_PANE_CSS, unsafe_allow_html=True)
 
     with st.sidebar:
         if st.button("🔬 Home", use_container_width=True, key="ask_lane_home_btn"):
@@ -830,7 +870,6 @@ def _render_ask_lane() -> None:
             selected_scopes = ["All"]
         effective_scopes = selected_scopes
         if "All" in effective_scopes and len(effective_scopes) > 1:
-            # All already covers every lane, so keep only the specific selections for comparison.
             effective_scopes = [s for s in effective_scopes if s != "All"]
             st.caption("ℹ All covers every lane; querying the selected scopes instead.")
         scope_filters = [(s, RESEARCH_SCOPES[s]) for s in effective_scopes]
@@ -852,33 +891,51 @@ def _render_ask_lane() -> None:
 
     if not messages:
         st.markdown(
-            '<div class="lane-empty">Your conversation will appear here — '
-            'ask anything about the indexed documents.</div>',
+            render_qwythlit_header_card(
+                status="READY",
+                status_active=False,
+                stage_idx=0,
+            ),
             unsafe_allow_html=True,
         )
     else:
-        for message in messages:
-            _render_turn(message, dllm_online)
+        latest = messages[-1]
+        latest_query = latest.get("query", "")
+        latest_answer = latest.get("answer", [])
+        latest_rows = latest.get("rows", [])
+        latest_chips = _source_chips(latest_rows) if latest_rows else ""
+        augmentation = latest.get("augmentation")
 
-    prompt = st.chat_input("Ask a question")
+        st.markdown(
+            render_qwythlit_header_card(
+                status="READY",
+                status_active=False,
+                stage_idx=3,
+                latest_query=latest_query,
+                latest_answer=latest_answer,
+                latest_chips=latest_chips,
+                augmentation=augmentation,
+            ),
+            unsafe_allow_html=True,
+        )
+
+        if latest.get("scope_results"):
+            for scope, res in latest["scope_results"].items():
+                _render_scope_summary(scope, res, dllm_online=dllm_online)
+
+        if len(messages) > 1:
+            with st.expander(f"📜 Earlier conversation ({len(messages) - 1} turns)", expanded=False):
+                for prev in messages[:-1]:
+                    _render_turn(prev, dllm_online)
+
+    prompt = st.chat_input("Ask the knowledge layer...")
     if prompt and prompt.strip():
         query = prompt.strip()
-
-        # ------------------------------------------------------------------ #
-        # Render the new user message inline (visible during processing).
-        # ------------------------------------------------------------------ #
-        with st.chat_message("user", avatar="🧑‍🔬"):
-            st.markdown(query)
-
-        if single_scope:
-            result = None
-            augmentation: str | None = None
-            aug_label: str | None = None
-
-            with st.chat_message("assistant", avatar="🔬"):
-                # ---------------------------------------------------------------- #
-                # Pass 1 — instant RAG/CAG: retrieval + extractive bullets.        #
-                # ---------------------------------------------------------------- #
+        with st.spinner("02 · Retrieving graph + chunks from synchrotron knowledge layer…"):
+            if single_scope:
+                result = None
+                augmentation = None
+                aug_label = None
                 try:
                     result = query_backend(query, 16, True, 0.80, metadata_filter=active_mfilter)
                 except RuntimeError as exc:
@@ -886,97 +943,58 @@ def _render_ask_lane() -> None:
 
                 if result is not None:
                     tier = _fallback_tier(result)
-                    chips = _source_chips(result["rows"])
-                    if chips:
-                        st.markdown(chips, unsafe_allow_html=True)
-
-                    if result["answer"]:
-                        st.markdown(_evidence_bullets_html(result["answer"]), unsafe_allow_html=True)
-
-                    # ---------------------------------------------------------------- #
-                    # Pass 2 — streaming LLM fallback, tier-gated.                    #
-                    #   grounded → also augment with context (score was good)          #
-                    #   weak     → augment with retrieved context, flag as partial     #
-                    #   general  → answer from general knowledge, flag clearly         #
-                    # ---------------------------------------------------------------- #
-                    aug_label = None
                     if dllm_online:
                         if tier == "grounded":
                             aug_label = "💬 AI augmentation · grounded synthesis"
                             aug_grounded = True
                         elif tier == "weak":
-                            st.caption("_Weak corpus match — augmenting with available context…_")
                             aug_label = "💬 AI augmentation · partial context"
                             aug_grounded = True
-                        else:  # general
-                            st.caption("_Not found in indexed documents — answering from general knowledge…_")
+                        else:
                             aug_label = "💬 General knowledge answer · not from corpus"
                             aug_grounded = False
 
-                        st.divider()
-                        st.caption(aug_label)
                         try:
-                            augmentation = st.write_stream(
-                                stream_generate_answer(
-                                    query, result["rows"], model=DLLM_MODEL, grounded=aug_grounded
-                                )
-                            )
+                            aug_chunks = []
+                            for chunk in stream_generate_answer(
+                                query, result["rows"], model=DLLM_MODEL, grounded=aug_grounded
+                            ):
+                                aug_chunks.append(chunk)
+                            augmentation = "".join(aug_chunks)
                         except Exception as exc:
-                            st.caption(f"_Augmentation unavailable: {exc}_")
-                            augmentation = None
-                    elif tier != "grounded":
-                        # DLLM offline and no extractive answer
-                        st.markdown("_Nothing relevant found — try rephrasing._")
+                            augmentation = f"_Augmentation unavailable: {exc}_"
 
-            if result is not None:
-                turn: dict = {
-                    "query": query,
-                    "rows": result["rows"],
-                    "answer": result["answer"],
-                }
-                if augmentation:
-                    turn["augmentation"] = augmentation
-                    if aug_label:
-                        turn["augmentation_label"] = aug_label
-                messages.append(turn)
-                st.session_state["lane_rows"] = result["rows"]
-                st.session_state["lane_from_cache"] = result["from_cache"]
-                st.rerun()
-        else:
-            # ---------------------------------------------------------------- #
-            # Multi-scope mode — run the same query against each selected lane. #
-            # No LLM pass: comparison cards are for quick beamline triage.      #
-            # ---------------------------------------------------------------- #
-            with st.chat_message("assistant", avatar="🔬"):
-                st.caption(f"Querying {len(scope_filters)} selected scopes…")
-                scope_results: dict[str, dict] = {}
-                any_rows = False
+                if result is not None:
+                    turn = {
+                        "query": query,
+                        "rows": result["rows"],
+                        "answer": result["answer"],
+                    }
+                    if augmentation:
+                        turn["augmentation"] = augmentation
+                        if aug_label:
+                            turn["augmentation_label"] = aug_label
+                    messages.append(turn)
+                    st.session_state["lane_rows"] = result["rows"]
+                    st.session_state["lane_from_cache"] = result["from_cache"]
+                    st.rerun()
+            else:
+                scope_results = {}
                 for scope, mfilter in scope_filters:
                     try:
                         res = query_backend(query, 16, True, 0.80, metadata_filter=mfilter)
                     except RuntimeError as exc:
-                        st.error(f"{scope}: {exc}")
                         res = None
                     scope_results[scope] = res
-                    if res and res.get("rows"):
-                        any_rows = True
-                    _render_scope_summary(scope, res, dllm_online=dllm_online)
-
-            if scope_results:
-                turn = {
-                    "query": query,
-                    "scope_results": scope_results,
-                }
+                turn = {"query": query, "scope_results": scope_results}
                 messages.append(turn)
-                first_rows = next(
-                    (r["rows"] for r in scope_results.values() if r and r.get("rows")),
-                    [],
-                )
+                first_rows = next((r["rows"] for r in scope_results.values() if r and r.get("rows")), [])
                 st.session_state["lane_rows"] = first_rows
-                st.session_state["lane_from_cache"] = any(
-                    r.get("from_cache") for r in scope_results.values() if r
-                )
+                st.session_state["lane_from_cache"] = any(r.get("from_cache") for r in scope_results.values() if r)
                 st.rerun()
+
+    _render_floating_q_launcher("ask_lane")
+
 
 
 def _home_gate() -> None:
@@ -1023,15 +1041,16 @@ def _home_gate() -> None:
         with right_card:
             st.markdown(
                 '<div class="jls-mode-card">'
-                '<h4>💬 Ask Lane</h4>'
-                '<p>Clean ask-and-read surface — just type a question and get a cited answer.</p>'
+                '<h4>🌈 Qwythlit Ask Lane</h4>'
+                '<p>Cinematic knowledge layer — animated familiar, spectral beam pulse, and grounded answers.</p>'
                 '</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Open Ask Lane", use_container_width=True, key="btn_ask"):
+            if st.button("Open Qwythlit Ask Lane", type="primary", use_container_width=True, key="btn_ask"):
                 st.session_state["ui_mode"] = "ask_lane"
                 st.rerun()
 
+        _render_floating_q_launcher("home")
     st.stop()
 
 
@@ -1849,3 +1868,5 @@ st.caption(
     f"Mode: **{', '.join(mode_bits)}**. "
     "Source documents and pages always come from Chroma retrieval."
 )
+
+_render_floating_q_launcher("full")
