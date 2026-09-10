@@ -15,7 +15,7 @@ CAG cache look-up, and answer assembly happen there and in ``cls_backend/``; thi
 file is pure presentation.
 
 Key environment switches (set in ``cls.env`` before launch):
-    CLS_RETRIEVAL_ONLY=1  — disables the generative carrier (default ON).
+    JS_RETRIEVAL_ONLY=1  — disables the generative carrier (default ON).
     CLS_KEYWORD_ONLY=1    — disables semantic vector search; lexical only (default ON).
 
 Start the app:  ./scripts/launch_cls.sh   (creates .venv, installs deps, opens browser)
@@ -114,12 +114,12 @@ def _role_has(role_name: str, capability: str) -> bool:
     (e.g. inside the role-agnostic Ask Lane, which still reads st.session_state)."""
     return capability in ROLES.get(role_name, {}).get("caps", set())
 # Architecture: retrieval is primary. During the temporary speed-first phase,
-# CLS_RETRIEVAL_ONLY disables every LLM augmentation path and CLS_KEYWORD_ONLY skips
+# JS_RETRIEVAL_ONLY disables every LLM augmentation path and CLS_KEYWORD_ONLY skips
 # semantic query embedding for deterministic keyword retrieval.
 DLLM_MODEL = DEFAULT_DLLM_MODEL
 
 st.set_page_config(
-    page_title=f"CLS RAG+CAG Prototype · {APP_VERSION}",
+    page_title=f"John's Synchrotron · {APP_VERSION}",
     page_icon="🔬",
     layout="wide",
 )
@@ -157,7 +157,7 @@ def render_evidence_store(rows: list[dict]) -> None:
 
 
 API_URL = DEFAULT_API_URL.rstrip("/")
-USE_API_BACKEND = os.getenv("CLS_USE_API", "0").strip().lower() in {"1", "true", "yes", "on"}
+USE_API_BACKEND = os.getenv("JS_USE_API", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 @st.cache_resource(show_spinner=False)
@@ -415,7 +415,7 @@ def render_answer_component(
     if st.session_state.get("last_retrieval_mode") == "lexical_fallback":
         st.warning(
             "Semantic retrieval is offline, so these rows were ranked with the deterministic "
-            "text fallback. Start Ollama with `nomic-embed-text` to restore semantic ranking."
+            "text fallback. Restore semantic embedding to get semantic ranking."
         )
     citation_note = (
         "Retrieval-only mode: row numbers are evidence labels; extractive citations name "
@@ -805,7 +805,7 @@ def _render_ask_lane() -> None:
     st.markdown(
         _BRIGHT_LANE_CSS +
         f"""<div class="lane-hero">
-          <h1>🔬 CLS Research Documents <span style="opacity:0.4;font-size:1rem">{APP_VERSION}</span></h1>
+          <h1>🔬 John's Synchrotron <span style="opacity:0.4;font-size:1rem">{APP_VERSION}</span></h1>
           <p>Ask a question — {pass2_label}.</p>
           <div class="lane-rule"></div>
         </div>""",
@@ -818,7 +818,7 @@ def _render_ask_lane() -> None:
             st.rerun()
         st.divider()
         st.header("Research Scope")
-        st.caption("Filter retrieval to one or more CLS beamlines.")
+        st.caption("Filter retrieval to one or more disciplines.")
         selected_scopes = st.multiselect(
             "Active scopes",
             list(RESEARCH_SCOPES.keys()),
@@ -827,12 +827,12 @@ def _render_ask_lane() -> None:
             label_visibility="collapsed",
         )
         if not selected_scopes:
-            selected_scopes = ["All beamlines"]
+            selected_scopes = ["All"]
         effective_scopes = selected_scopes
-        if "All beamlines" in effective_scopes and len(effective_scopes) > 1:
+        if "All" in effective_scopes and len(effective_scopes) > 1:
             # All already covers every lane, so keep only the specific selections for comparison.
-            effective_scopes = [s for s in effective_scopes if s != "All beamlines"]
-            st.caption("ℹ All beamlines covers every lane; querying the selected scopes instead.")
+            effective_scopes = [s for s in effective_scopes if s != "All"]
+            st.caption("ℹ All covers every lane; querying the selected scopes instead.")
         scope_filters = [(s, RESEARCH_SCOPES[s]) for s in effective_scopes]
         single_scope = len(scope_filters) == 1
         active_mfilter = scope_filters[0][1] if single_scope else None
@@ -988,7 +988,7 @@ def _home_gate() -> None:
     with col:
         st.markdown(
             f"""<div class="cls-hero" style="text-align:center;padding:1.6rem 1.5rem 1.3rem">
-              <h1 style="font-size:clamp(1.5rem,3vw,2rem)">🔬 CLS Synchrotron Research Query</h1>
+              <h1 style="font-size:clamp(1.5rem,3vw,2rem)">🔬 John's Synchrotron</h1>
               <p style="margin-bottom:0.2rem">Choose how you want to work today.</p>
               <div class="cls-spectrum-rule" style="margin-top:0.9rem"></div>
             </div>""",
@@ -1363,7 +1363,7 @@ st.markdown(
 st.markdown(
     f"""
     <div class="cls-hero">
-      <h1>🔬 CLS Synchrotron Research Query <span style="opacity:0.55;font-size:1rem;">{APP_VERSION}</span>
+      <h1>🔬 John's Synchrotron <span style="opacity:0.55;font-size:1rem;">{APP_VERSION}</span>
         &nbsp;<span class="cls-badge" style="--hue:{role_accent}">{role_meta['glyph']} {active_role}</span></h1>
       <p>Cited answers from indexed facility manuals and research documents.</p>
       <div class="cls-spectrum-rule"></div>
@@ -1503,7 +1503,7 @@ def _render_upload_section() -> None:
         with st.expander(f"Files queued for indexing ({len(sizes)})", expanded=False):
             st.markdown("\n".join(f"- {name} — {_human_size(size)}" for name, size in sizes))
     
-    scope_tag = st.selectbox("Assign a beamline:", list(RESEARCH_SCOPES.keys()), index=0)
+    scope_tag = st.selectbox("Assign a discipline:", list(RESEARCH_SCOPES.keys()), index=0)
     extra_meta = RESEARCH_SCOPES[scope_tag] or {}
 
     reindex_uploads = (
@@ -1602,7 +1602,7 @@ with st.sidebar:
     )
 
     st.header("Research Scope")
-    st.caption("Filter retrieval to a specific CLS beamline.")
+    st.caption("Filter retrieval to a specific discipline.")
     selected_scope = st.selectbox("Active scope", list(RESEARCH_SCOPES.keys()), label_visibility="collapsed")
     active_mfilter = RESEARCH_SCOPES[selected_scope]
     if role_can("scopes"):
@@ -1617,7 +1617,7 @@ with st.sidebar:
             new_name = st.text_input(
                 "Scope name",
                 key="new_scope_name",
-                placeholder="e.g. SXRMB — Soft X-ray Microcharacterization",
+                placeholder="e.g. Mathematics",
             )
             new_domain = st.text_input(
                 "Domain slug (optional — derived from name if blank)",
@@ -1691,7 +1691,7 @@ if role_can("index") or active_role != "User" or role_can("dllm"):
             st.subheader("💬 Inference carrier")
             if RETRIEVAL_ONLY:
                 st.caption(dllm_endpoint.get("detail", "Carrier offline — retrieval evidence and extraction still work."))
-                st.caption("Set `CLS_RETRIEVAL_ONLY=0` before launch to re-enable generation.")
+                st.caption("Set `JS_RETRIEVAL_ONLY=0` before launch to re-enable generation.")
             else:
                 st.caption(
                     f"{carrier_name} · {DLLM_MODEL}. The carrier writes the optional synthesis only; "
@@ -1844,7 +1844,7 @@ mode_bits = [
     "keyword-only" if KEYWORD_ONLY_RETRIEVAL else "hybrid semantic+keyword",
 ]
 st.caption(
-    f"{APP_VERSION} · CLS Synchrotron Research Query — DocuSearch-style RAG/CAG. "
+    f"{APP_VERSION} · John's Synchrotron — DocuSearch-style RAG/CAG. "
     "**Evidence Store** (ChromaDB) → deterministic clean-parse. "
     f"Mode: **{', '.join(mode_bits)}**. "
     "Source documents and pages always come from Chroma retrieval."

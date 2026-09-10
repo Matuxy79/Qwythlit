@@ -1,34 +1,26 @@
-"""Chainlit Ask Lane — a streaming, layered RAG/CAG chat over the shared backend.
+"""Chainlit Ask Lane — a streaming RAG/CAG chat over the shared backend.
 
 Run:  chainlit run chat_lane.py -w        (or ./scripts/launch_chat.sh)
 
-Two-pass answer design:
-  PASS 1 — instant grounded answer from the RAG/CAG engine, no LLM wait.
-            Formatted markdown bullets with match badge (exact / close / loose / cached)
-            and source chips attached.  This is always the source of truth and is visible
-            immediately before the parrot starts.
-  PASS 2 — natural-language prose streamed token-by-token from the small local parrot
-            (qwen2.5:0.5b via Ollama).  The Pass 2 message is created on the first token
-            so there is no empty-message flash.  Falls back silently to Pass 1 alone when
-            the parrot is offline, and is flagged if prose drifts from the evidence.
+Single-pass answer design:
+  Instant grounded answer from the RAG/CAG engine, no LLM wait.
+  Formatted markdown bullets with match badge (exact / close / loose / cached)
+  and source chips attached.  This is always the source of truth.
 
-The retrieval / CAG / parrot / embedder engine is reused unchanged from cls_service and
+The retrieval / CAG / embedder engine is reused unchanged from cls_service and
 cls_backend — this file is only the Chainlit view.
 """
 
 from __future__ import annotations
 
-import asyncio
 import os
-import threading
 
 import chainlit as cl
 from chainlit.input_widget import Select
 
 from cls_config import APP_VERSION, KEYWORD_ONLY_RETRIEVAL, RESEARCH_SCOPES, RETRIEVAL_ONLY
 from cls_backend.query_repair import repair_query
-from cls_backend.dllm import numbers_grounded, relation_drift
-from cls_service import ask_manual, parrot_stream
+from cls_service import ask_manual
 
 
 def _match_badge(result: dict) -> str:
@@ -59,26 +51,7 @@ def _sources(rows: list[dict]) -> list[str]:
     return items
 
 
-async def _astream_parrot(sentences: list[str]):
-    """Bridge the blocking parrot generator to async so the event loop isn't blocked."""
-    queue: asyncio.Queue = asyncio.Queue()
-    loop = asyncio.get_event_loop()
-    sentinel = object()
-
-    def worker():
-        for token in parrot_stream(sentences):
-            loop.call_soon_threadsafe(queue.put_nowait, token)
-        loop.call_soon_threadsafe(queue.put_nowait, sentinel)
-
-    threading.Thread(target=worker, daemon=True).start()
-    while True:
-        token = await queue.get()
-        if token is sentinel:
-            break
-        yield token
-
-
-_STREAMLIT_URL = os.getenv("CLS_STREAMLIT_URL", "http://localhost:8501")
+_STREAMLIT_URL = os.getenv("JS_STREAMLIT_URL", "http://localhost:8501")
 
 
 @cl.on_chat_start
@@ -90,12 +63,12 @@ async def start():
     cl.user_session.set("scope", scopes[0])
     await cl.Message(
         content=(
-            f"### 🔬 CLS Research Documents `{APP_VERSION}`\n"
+            f"### 🔬 John's Synchrotron `{APP_VERSION}`\n"
             "Ask a question — instant cited answers from your indexed documents. "
             + (
-                "Temporary retrieval-only mode is active; no phrased model answer will run."
+                "Temporary retrieval-only mode is active; no model answer will run."
                 if RETRIEVAL_ONLY
-                else "The grounded evidence is the source of truth; the phrased answer rides on top."
+                else "The grounded evidence is the source of truth."
             )
         ),
     ).send()
@@ -112,11 +85,11 @@ async def on_message(message: cl.Message):
     if not query:
         return
 
-    scope = cl.user_session.get("scope") or "All beamlines"
+    scope = cl.user_session.get("scope") or "All"
     mfilter = RESEARCH_SCOPES.get(scope)
     search = repair_query(query)["search"]
 
-    # ── PASS 1: RAG/CAG engine — instant grounded answer, no LLM wait ────
+    # ── RAG/CAG engine — instant grounded answer, no LLM wait ────
     result = await cl.make_async(ask_manual)(
         search,
         top_k=16,
@@ -141,35 +114,4 @@ async def on_message(message: cl.Message):
                 display="inline",
             )
         ]
-    await p1.send()  # user sees grounded answer immediately
-
-    if RETRIEVAL_ONLY:
-        return
-
-    # ── PASS 2: Parrot — message created on first token, no empty flash ───
-    p2: cl.Message | None = None
-    streamed = ""
-    async for token in _astream_parrot(answer):
-        if p2 is None:
-            p2 = cl.Message(content="")
-            await p2.send()
-        streamed += token
-        await p2.stream_token(token)
-
-    if p2 is None or not streamed.strip():
-        return  # parrot offline — pass 1 stands alone
-
-    # Wernicke check: numbers grounded AND no relation-drift near a fact.
-    if not numbers_grounded(streamed, answer):
-        await p2.stream_token(
-            "\n\n> ⚠ _this phrasing introduced a number not in the source — "
-            "trust the grounded evidence above._"
-        )
-    elif drift := relation_drift(streamed, answer):
-        suspect = ", ".join(f"**{w}**" for w in drift[:4])
-        await p2.stream_token(
-            f"\n\n> ⚠ _phrasing may not match the source near: {suspect} — "
-            "trust the grounded evidence above._"
-        )
-
-    await p2.update()
+    await p1.send()

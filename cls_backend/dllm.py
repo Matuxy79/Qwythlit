@@ -70,7 +70,7 @@ def needs_correction(sentences: Iterable[str]) -> Tuple[bool, Optional[str]]:
 
 
 CORRECTION_SYSTEM = (
-    "You are a downstream text corrector for Canadian Light Source research documents. "
+    "You are a downstream text corrector for John's Synchrotron research documents. "
     "You receive already-extracted, factual sentences that contain minor artifacts from PDF, "
     "web, or office-document extraction. Fix ONLY mechanical issues: rejoin hyphenation breaks, "
     "repair obvious spacing, drop leftover header fragments, and complete a sentence that was "
@@ -144,9 +144,9 @@ def answer_context(rows: list[dict], max_passages: int = 6, max_chars: int = 900
 
 
 ANSWER_SYSTEM = (
-    "You are a retrieval-grounded assistant for the Canadian Light Source. Answer the "
+    "You are a retrieval-grounded assistant for John's Synchrotron. Answer the "
     "user's question naturally and directly, using the numbered context passages as your "
-    "only source of facts about the facility.\n"
+    "only source of facts.\n"
     "Hard rules:\n"
     "1. Factual claims (procedures, settings, contacts, specifications) must come from the "
     "context passages; cite the ones you use by their bracket numbers, e.g. [1], [2].\n"
@@ -178,7 +178,7 @@ def answer_user(query: str, rows: list[dict]) -> str:
 # outside knowledge up as a document citation.
 
 ASSIST_SYSTEM = (
-    "You are a helpful assistant for the Canadian Light Source. You may use both the numbered "
+    "You are a helpful assistant for John's Synchrotron. You may use both the numbered "
     "context passages provided and your own general knowledge.\n"
     "Hard rules:\n"
     "1. Prefer the context passages when they cover the question, and cite the ones you use by "
@@ -211,43 +211,8 @@ def answer_numbers_grounded(text: str, rows: list[dict]) -> bool:
     return numbers_grounded(text, [context])
 
 
-# --- Ask Lane parrot -------------------------------------------------------------------- #
-# A tiny local model (qwen2.5:0.5b via Ollama) that rephrases the already-grounded extractive
-# sentences into one natural-language paragraph. Deliberately a parrot, not a reasoner: it
-# adds nothing, infers nothing, and is held to the same numbers_grounded guard as the carrier.
-# If the rephrase drifts (invents a number) the caller falls back to the extractive bullets.
-
-_PARROT_CITE = re.compile(r"\s*\[Source:[^\]]*\]\s*")
-
-PARROT_SYSTEM = (
-    "You rewrite factual notes into one short, natural paragraph for a reader.\n"
-    "You are a parrot, not a thinker: use ONLY the facts in the notes. Never add, infer, "
-    "explain, or reason beyond what is written.\n"
-    "Hard rules:\n"
-    "1. Use only information present in the notes. Add nothing.\n"
-    "2. Keep every number, name, unit, and identifier exactly as written.\n"
-    "3. Do not write bracket citations or '[Source: ...]' tags.\n"
-    "4. One to three plain sentences. Output only the paragraph, nothing else."
-)
-
-
-def parrot_user(sentences: Iterable[str]) -> str:
-    notes = []
-    for sentence in sentences:
-        clean = _PARROT_CITE.sub(" ", sentence).strip()
-        if clean:
-            notes.append(f"- {clean}")
-    body = "\n".join(notes)
-    return f"Notes:\n{body}\n\nRewrite these notes as one short, natural paragraph."
-
-
-def parrot_grounded(prose: str, sentences: list[str]) -> bool:
-    """Parrot output is trusted only if it invented no multi-digit numbers."""
-    return numbers_grounded(prose, sentences)
-
-
 # --- Wernicke relation guard ------------------------------------------------------------ #
-# The number guard catches invented digits but NOT relation-drift: the parrot can keep a real
+# The number guard catches invented digits but NOT relation-drift: a model can keep a real
 # number while binding it to the wrong thing — "floor coordinator at ext. 3639" became
 # "elevator number 3639". Both numbers are real, so numbers_grounded passes it.
 #
@@ -266,7 +231,7 @@ _DRIFT_STOP = {
     "the", "a", "an", "and", "or", "of", "to", "for", "in", "on", "at", "by", "is", "are",
     "was", "were", "be", "can", "via", "with", "this", "that", "it", "as", "from", "into",
     "ext", "no", "number",
-    # generic relation/locative verbs the parrot swaps freely — not the entity-drift we hunt
+    # generic relation/locative verbs — not the entity-drift we hunt
     "located", "accessed", "reached", "called", "contacted", "found", "used", "set",
     "provided", "available", "listed", "given", "made", "obtained", "handled",
 }
@@ -309,8 +274,3 @@ def relation_drift(prose: str, sentences: list[str], window: int = 3) -> list[st
                 seen.add(term)
                 offending.append(term)
     return offending
-
-
-def parrot_trustworthy(prose: str, sentences: list[str]) -> bool:
-    """Full parrot trust contract: no invented numbers AND no relation-drift near a fact."""
-    return numbers_grounded(prose, sentences) and not relation_drift(prose, sentences)

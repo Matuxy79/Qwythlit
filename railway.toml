@@ -1,4 +1,4 @@
-# Railway deployment configuration for the interactive CLS Streamlit app.
+# Railway deployment configuration for John's Synchrotron Streamlit app.
 # Both Full App and Ask Lane are served by app.py using the embedded backend.
 # Use railway.api.toml for a separate FastAPI service.
 
@@ -6,10 +6,10 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "CLS_USE_API=0 python -m streamlit run app.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"
+startCommand = "JS_USE_API=0 python -m streamlit run app.py --server.address=0.0.0.0 --server.port=${PORT:-8501} --server.headless=true"
 healthcheckPath = "/_stcore/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-# Persist the index with a volume + CLS_CHROMA_DIR=/data/chroma_store.
+# Persist the index with a volume + JS_CHROMA_DIR=/data/chroma_store.
 # Empty stores are populated from the default corpus on the first UI session.

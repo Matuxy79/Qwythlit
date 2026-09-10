@@ -1,6 +1,6 @@
 """FastAPI shared bridge — an *optional* HTTP layer in front of the RAG+CAG backend.
 
-This API is only active when the environment variable ``CLS_USE_API=1`` is set.
+This API is only active when the environment variable ``JS_USE_API=1`` is set.
 By default the Streamlit UI (``app.py``) and the Chainlit Ask Lane (``chat_lane.py``)
 import ``cls_service`` directly; no HTTP hop is needed for local single-machine use.
 
@@ -14,7 +14,7 @@ Route groups:
         Liveness plus Chroma counts. Railway's healthcheck uses this path.
 
     POST /v1/ingest/default
-        Index ``data/training_corpus/test_books`` (or ``CLS_DEFAULT_DOCUMENTS_DIR``)
+        Index ``data/training_corpus/test_books`` (or ``JS_DEFAULT_DOCUMENTS_DIR``)
         into this process's Chroma store.
 
     POST /v1/query
@@ -25,11 +25,11 @@ Route groups:
     POST /v1/chat/completions
         OpenAI-compatible chat endpoint.  Wraps the same retrieval backend so
         any OpenAI-compatible client (LangChain, LlamaIndex, curl, etc.) can
-        drive the CLS knowledge base without code changes.
+        drive the knowledge base without code changes.
 
     POST /v1/dllm/chat
-        Thin proxy to the configured generative carrier (OpenRouter by default,
-        Ollama for offline use).  Only reachable when ``CLS_RETRIEVAL_ONLY=0``.
+        Thin proxy to the configured generative carrier (OpenRouter by default).
+        Only reachable when ``JS_RETRIEVAL_ONLY=0``.
 
 CORS is restricted to localhost origins; no external traffic is expected in the
 current prototype deployment.
@@ -71,7 +71,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="CLS RAG+CAG API",
+    title="John's Synchrotron API",
     version=APP_VERSION,
     description="Shared RAG API plus inference carrier proxy for Streamlit, Chainlit, and OpenAI-compatible frontends.",
     lifespan=lifespan,
@@ -80,7 +80,7 @@ app = FastAPI(
 # RAILWAY_PUBLIC_DOMAIN / the service URL), the platform's own origin and any
 # https origin listed in CLS_CORS_ORIGINS are added so browser clients on the
 # public domain are not blocked.
-_EXTRA_ORIGINS = [o.strip() for o in os.getenv("CLS_CORS_ORIGINS", "").split(",") if o.strip()]
+_EXTRA_ORIGINS = [o.strip() for o in os.getenv("JS_CORS_ORIGINS", "").split(",") if o.strip()]
 _RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "") or os.getenv("RAILWAY_DOMAIN", "")
 if _RAILWAY_DOMAIN:
     _EXTRA_ORIGINS.append(f"https://{_RAILWAY_DOMAIN}")
@@ -133,7 +133,7 @@ class IngestDefaultRequest(BaseModel):
 
 def _service_index() -> dict[str, Any]:
     return {
-        "service": "CLS RAG+CAG API",
+        "service": "John's Synchrotron API",
         "version": APP_VERSION,
         "status": "ok",
         "docs": "/docs",
@@ -230,7 +230,7 @@ def models() -> dict[str, Any]:
             "id": CLS_RAG_MODEL,
             "object": "model",
             "created": 0,
-            "owned_by": "cls",
+            "owned_by": "js",
         },
     ]
     if not RETRIEVAL_ONLY:

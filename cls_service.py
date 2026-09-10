@@ -20,10 +20,8 @@ ask_manual(query, ...)      Full RAG+CAG retrieval pipeline — returns evidence
                             and the assembled extractive answer.
 answer_text(result)         Extract the plain-text answer string from an ask_manual result.
 generate_answer(...)        Optional: send the extractive answer to the carrier LLM for
-                            prose clean-up (only when CLS_RETRIEVAL_ONLY=0).
+                            prose clean-up (only when JS_RETRIEVAL_ONLY=0).
 stream_generate_answer(...) Streaming variant of generate_answer.
-parrot_stream(...)          Stream natural-language rephrasing via the small local parrot
-                            model (used by the Chainlit Ask Lane).
 reset_collection()          Drop and recreate the Evidence Store and CAG cache — also
                             clears the in-memory lexical index.
 
@@ -68,18 +66,13 @@ from cls_config import (
     DEFAULT_DLLM_MODEL,
     KEYWORD_ONLY_RETRIEVAL,
     RETRIEVAL_ONLY,
-    DEFAULT_PARROT_MODEL,
-    DEFAULT_PARROT_URL,
 )
 from cls_backend.cag_cache import SemanticEvidenceCache
 from cls_backend.dllm import (
     ANSWER_SYSTEM,
     ASSIST_SYSTEM,
-    PARROT_SYSTEM,
     answer_user,
     assist_user,
-    parrot_grounded,
-    parrot_user,
 )
 from cls_backend.pipeline import (
     EMBED_DIM,
@@ -650,7 +643,7 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
 
 def _is_local_endpoint(url: str) -> bool:
-    """Local carriers (Ollama) need no API key; remote carriers (OpenRouter, Groq) do."""
+    """Local carriers need no API key; remote carriers (OpenRouter, Groq) do."""
     return (urlparse(url).hostname or "").lower() in _LOCAL_HOSTS
 
 
@@ -664,7 +657,7 @@ def _carrier_name(url: str) -> str:
     if "groq" in host:
         return "Groq"
     if host in _LOCAL_HOSTS:
-        return "Local (Ollama)"
+        return "Local"
     return host
 
 
@@ -677,17 +670,17 @@ def dllm_status(timeout: float = 1.0) -> dict:
 
     if RETRIEVAL_ONLY:
         detail = (
-            "Retrieval-only mode is active (CLS_RETRIEVAL_ONLY=1): LLM synthesis, "
-            "cleanup, self-debate, parrot phrasing, and proxy calls are disabled."
+            "Retrieval-only mode is active (JS_RETRIEVAL_ONLY=1): LLM synthesis, "
+            "cleanup, and proxy calls are disabled."
         )
     elif not configured:
-        detail = "Set CLS_DLLM_API_URL to enable the gpt-oss-120b answer."
+        detail = "Set JS_DLLM_API_URL to enable the gpt-oss-120b answer."
     elif not local and not has_key:
         # Remote carrier wired in, but no key yet — the on-by-default toggle stays disabled
         # until the key is present so searches don't 401 on every call.
         detail = (
-            f"Carrier set to {carrier} but no API key found. Paste your key into cls.env "
-            "(CLS_DLLM_API_KEY), then relaunch."
+            f"Carrier set to {carrier} but no API key found. Paste your key into js.env "
+            "(JS_DLLM_API_KEY), then relaunch."
         )
     else:
         try:
@@ -855,104 +848,7 @@ def stream_generate_answer(
         raise RuntimeError(f"Streaming call failed: {exc}") from exc
 
 
-def parrot_status(timeout: float = 1.0) -> dict:
-    """Is the small local parrot model reachable? (Ollama OpenAI-compatible endpoint.)"""
-    if RETRIEVAL_ONLY:
-        return {
-            "online": False,
-            "model": DEFAULT_PARROT_MODEL,
-            "base_url": DEFAULT_PARROT_URL,
-            "disabled": True,
-            "detail": "Retrieval-only mode is active; parrot phrasing is disabled.",
-        }
-    online = False
-    try:
-        request = urllib.request.Request(f"{DEFAULT_PARROT_URL}/models", method="GET")
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            online = 200 <= response.status < 300
-    except Exception:
-        online = False
-    return {"online": online, "model": DEFAULT_PARROT_MODEL, "base_url": DEFAULT_PARROT_URL}
 
-
-def parrot_answer(sentences: list[str], *, timeout: float = 30.0) -> str | None:
-    """Rephrase grounded extractive sentences into one natural-language paragraph using the
-    small local model. Returns None if the model is unavailable or if the output drifts from
-    the evidence (invents a number) — the caller then falls back to the extractive bullets.
-    """
-    if RETRIEVAL_ONLY or not sentences:
-        return None
-    payload = json.dumps(
-        {
-            "model": DEFAULT_PARROT_MODEL,
-            "messages": [
-                {"role": "system", "content": PARROT_SYSTEM},
-                {"role": "user", "content": parrot_user(sentences)},
-            ],
-            "stream": False,
-            "temperature": 0.0,
-        }
-    ).encode("utf-8")
-    request = urllib.request.Request(
-        f"{DEFAULT_PARROT_URL}/chat/completions",
-        data=payload,
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            data = json.loads(response.read().decode("utf-8"))
-        prose = (data.get("choices") or [{}])[0].get("message", {}).get("content", "").strip()
-    except Exception:
-        return None
-    if not prose or not parrot_grounded(prose, sentences):
-        return None
-    return prose
-
-
-def parrot_stream(sentences: list[str], *, timeout: float = 60.0):
-    """Yield natural-language tokens that rephrase the grounded sentences, streamed from the
-    small local model. The grounded extractive answer stays the source of truth; this stream
-    is the fallible 'human' layer on top. Yields nothing if the model is unavailable.
-    """
-    if RETRIEVAL_ONLY or not sentences:
-        return
-    payload = json.dumps(
-        {
-            "model": DEFAULT_PARROT_MODEL,
-            "messages": [
-                {"role": "system", "content": PARROT_SYSTEM},
-                {"role": "user", "content": parrot_user(sentences)},
-            ],
-            "stream": True,
-            "temperature": 0.0,
-        }
-    ).encode("utf-8")
-    request = urllib.request.Request(
-        f"{DEFAULT_PARROT_URL}/chat/completions",
-        data=payload,
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            for raw in response:
-                line = raw.decode("utf-8").strip()
-                if not line or not line.startswith("data:"):
-                    continue
-                data = line[len("data:"):].strip()
-                if data == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data)
-                except json.JSONDecodeError:
-                    continue
-                delta = (chunk.get("choices") or [{}])[0].get("delta", {})
-                token = delta.get("content")
-                if token:
-                    yield token
-    except Exception:
-        return
 
 
 def service_status() -> dict:
