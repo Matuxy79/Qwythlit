@@ -48,14 +48,10 @@ from jls_config import (
 )
 from jls_service import (
     ask_manual,
-    call_dllm_api,
     collection_count,
-    dllm_status as service_dllm_status,
     evaluate_retrieval,
     evidence_breakdown,
     file_signature,
-    generate_answer,
-    stream_generate_answer,
     get_cache,
     get_collection,
     ingest_path,
@@ -65,7 +61,10 @@ from jls_service import (
     uploaded_signature,
     warm_keyword_index,
 )
+import openrouter_client
+
 from jls_backend.dllm import (
+    ANSWER_SYSTEM, ASSIST_SYSTEM, answer_user, assist_user,
     CORRECTION_SYSTEM,
     answer_numbers_grounded,
     correction_user,
@@ -84,7 +83,11 @@ from jls_backend.spectrum import (
     glow_css,
 )
 from jls_backend.query_repair import repair_query
-from qwythlit_pane import QWYTHLIT_PANE_CSS, render_qwythlit_header_card
+from qwythlit_pane import (
+    QWYTHLIT_PANE_CSS,
+    render_qwythlit_header_card,
+    render_qwythlit_media_background,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -114,9 +117,7 @@ def _role_has(role_name: str, capability: str) -> bool:
     """Capability check by role name — usable before the active role is resolved
     (e.g. inside the role-agnostic Ask Lane, which still reads st.session_state)."""
     return capability in ROLES.get(role_name, {}).get("caps", set())
-# Architecture: retrieval is primary. During the temporary speed-first phase,
-# JLS_RETRIEVAL_ONLY disables every LLM augmentation path and JLS_KEYWORD_ONLY skips
-# semantic query embedding for deterministic keyword retrieval.
+# Retrieval is primary; OpenRouter generation uses explicit session settings.
 DLLM_MODEL = DEFAULT_DLLM_MODEL
 
 st.set_page_config(
@@ -228,43 +229,89 @@ def query_backend(query: str, top_k: int, cache_enabled: bool, min_similarity: f
     )
 
 
+def _openrouter_settings() -> dict:
+    return st.session_state.get("openrouter_settings", {})
+
+
 def dllm_api_status() -> dict:
-    if not USE_API_BACKEND:
-        return service_dllm_status()
-    status = get_json("/v1/dllm/status")
-    if status:
-        return status
-    return {
-        "provider": "api",
-        "base_url": API_URL,
-        "model": DLLM_MODEL,
-        "configured": False,
-        "online": False,
-        "disabled": RETRIEVAL_ONLY,
-        "retrieval_only": RETRIEVAL_ONLY,
-        "detail": f"Start the API bridge at {API_URL}, or use embedded retrieval-only mode.",
-    }
+    settings = _openrouter_settings()
+    ready = bool(settings.get("api_key") and settings.get("model") and settings.get("enabled"))
+    return {"carrier": "OpenRouter", "model": settings.get("model", ""), "online": ready}
+
+
+def render_openrouter_setup() -> None:
+    st.subheader("OpenRouter")
+    settings = _openrouter_settings()
+    with st.form("openrouter_setup"):
+        api_key = st.text_input("OpenRouter API key", type="password",
+                                value=settings.get("api_key", ""),
+                                help="Kept only in this browser session; never saved to disk.")
+        models = st.session_state.get("openrouter_models", [])
+        current = settings.get("model", "openrouter/auto")
+        choices = list(dict.fromkeys([current, *models, "Enter model ID?"]))
+        selected = st.selectbox("Model", choices)
+        custom = st.text_input("Custom model ID", placeholder="provider/model")
+        enabled = st.checkbox("Use OpenRouter for answers", value=settings.get("enabled", True))
+        saved = st.form_submit_button("Save settings")
+    if saved:
+        model = custom.strip() if selected == "Enter model ID?" else selected
+        if enabled and (not api_key.strip() or not model or "/" not in model):
+            st.error("Enter your API key and a model ID in provider/model format.")
+        else:
+            st.session_state["openrouter_settings"] = {
+                "api_key": api_key.strip(), "model": model, "enabled": enabled,
+            }
+            st.session_state.pop("last_synth", None)
+            st.session_state.pop("last_dllm", None)
+            st.rerun()
+    left, right = st.columns(2)
+    if left.button("Refresh models"):
+        try:
+            st.session_state["openrouter_models"] = openrouter_client.model_ids()
+            st.rerun()
+        except RuntimeError as exc:
+            st.error(str(exc))
+    if right.button("Test key", disabled=not settings.get("api_key")):
+        try:
+            openrouter_client.request("/key", api_key=settings["api_key"])
+            st.success("API key verified. Model availability and credits are checked when answering.")
+        except RuntimeError as exc:
+            st.error(str(exc))
+    if st.button("Clear API key", disabled=not settings.get("api_key")):
+        st.session_state.pop("openrouter_settings", None)
+        st.session_state.pop("last_synth", None)
+        st.session_state.pop("last_dllm", None)
+        st.rerun()
+    st.markdown("[Create an OpenRouter API key](https://openrouter.ai/settings/keys)")
+    if dllm_api_status()["online"]:
+        st.caption(f"Answers use {settings['model']} via OpenRouter.")
+    else:
+        st.caption("Add a key and enable OpenRouter to generate answers from your retrieved evidence.")
+
+
+def generate_answer(query, rows, *, model=None, grounded=True):
+    settings = _openrouter_settings()
+    if not dllm_api_status()["online"]:
+        raise RuntimeError("Configure OpenRouter to enable AI answers.")
+    if grounded and not rows:
+        return ""
+    return openrouter_client.chat(
+        [{"role": "user", "content": answer_user(query, rows) if grounded else assist_user(query, rows)}],
+        api_key=settings["api_key"], model=settings["model"],
+        system=ANSWER_SYSTEM if grounded else ASSIST_SYSTEM,
+    )
+
+
+def stream_generate_answer(query, rows, *, model=None, grounded=True):
+    yield generate_answer(query, rows, grounded=grounded)
 
 
 def correct_with_dllm_api(sentences: list[str]) -> list[str]:
-    if not USE_API_BACKEND:
-        return parse_bullets(
-            call_dllm_api(
-                [{"role": "user", "content": correction_user(sentences)}],
-                system=CORRECTION_SYSTEM,
-                model=DLLM_MODEL,
-            )
-        )
-    response = post_json(
-        "/v1/dllm/chat",
-        {
-            "model": DLLM_MODEL,
-            "system": CORRECTION_SYSTEM,
-            "messages": [{"role": "user", "content": correction_user(sentences)}],
-        },
-        timeout=60.0,
-    )
-    return parse_bullets(response.get("content", ""))
+    settings = _openrouter_settings()
+    return parse_bullets(openrouter_client.chat(
+        [{"role": "user", "content": correction_user(sentences)}],
+        api_key=settings["api_key"], model=settings["model"], system=CORRECTION_SYSTEM,
+    ))
 
 
 def display_model_name(model: str) -> str:
@@ -421,7 +468,7 @@ def render_answer_component(
     citation_note = (
         "Retrieval-only mode: row numbers are evidence labels; extractive citations name "
         "the source document and page directly."
-        if RETRIEVAL_ONLY
+        if not dllm_api_online
         else "Carrier citations like [1] refer to these row numbers; extractive citations "
              "name the source document and page directly."
     )
@@ -884,11 +931,11 @@ def _render_floating_q_launcher(current_mode: str) -> None:
 def _render_ask_lane() -> None:
     """Cinematic Qwythlit animated Ask Lane over instant RAG/CAG extraction."""
     dllm_online = dllm_api_status().get("online", False)
-    dllm_model = dllm_api_status().get("model", DLLM_MODEL) if dllm_online else None
 
     # Inject cinematic Qwythlit styling: cosmic dark canvas, paired wyvern familiar,
     # synchrotron spectral beam pulse, and glassmorphism cards.
     st.markdown(QWYTHLIT_PANE_CSS, unsafe_allow_html=True)
+    st.markdown(render_qwythlit_media_background("ask_lane"), unsafe_allow_html=True)
 
     with st.sidebar:
         if st.button("🔬 Home", use_container_width=True, key="ask_lane_home_btn"):
@@ -914,12 +961,7 @@ def _render_ask_lane() -> None:
         single_scope = len(scope_filters) == 1
         active_mfilter = scope_filters[0][1] if single_scope else None
         st.divider()
-        if RETRIEVAL_ONLY:
-            st.caption("💬 AI augmentation disabled — retrieval-only mode.")
-        elif dllm_online:
-            st.caption(f"💬 AI augmentation: {dllm_model}")
-        else:
-            st.caption("💬 AI augmentation offline — extractive only.")
+        render_openrouter_setup()
         st.divider()
         if st.button("🧹 Clear chat", use_container_width=True):
             st.session_state["lane_messages"] = []
@@ -1040,6 +1082,8 @@ def _home_gate() -> None:
     if st.session_state.get("ui_mode"):
         return
 
+    st.markdown(render_qwythlit_media_background("home"), unsafe_allow_html=True)
+
     _, col, _ = st.columns([1, 1.6, 1])
     with col:
         st.markdown(
@@ -1055,11 +1099,15 @@ def _home_gate() -> None:
             """<style>
             .jls-mode-card {
                 border-radius:14px; padding:1.2rem 1.3rem; margin:0.6rem 0;
-                background:var(--panel); border:1px solid var(--line);
-                box-shadow:0 6px 20px rgba(120,80,60,0.08);
+                background:rgba(255,255,255,0.92); border:1px solid rgba(255,255,255,0.68);
+                box-shadow:0 16px 42px rgba(0,0,0,0.26); backdrop-filter:blur(14px);
             }
             .jls-mode-card h4 { margin:0 0 0.3rem; font-size:1.1rem; color:var(--ink); }
             .jls-mode-card p  { margin:0; font-size:0.88rem; color:var(--muted); line-height:1.45; }
+            .stApp:has(.qwythlit-media-bg[data-context="home"]) .jls-hero {
+                background:rgba(255,255,255,0.92); border-color:rgba(255,255,255,0.68);
+                box-shadow:0 20px 54px rgba(0,0,0,0.30); backdrop-filter:blur(14px);
+            }
             </style>""",
             unsafe_allow_html=True,
         )
@@ -1634,8 +1682,8 @@ def _render_upload_section() -> None:
 cag_enabled = True
 min_similarity = 0.80
 dllm_enabled = False
-# Synthesis is unavailable in temporary retrieval-only mode.
-synth_enabled = False if RETRIEVAL_ONLY else dllm_api_online
+# Synthesis follows the current session OpenRouter settings.
+synth_enabled = dllm_api_online
 answer_mode = "Grounded"
 
 with st.sidebar:
@@ -1742,53 +1790,12 @@ if role_can("index") or active_role != "User" or role_can("dllm"):
                 st.success(f"CAG cache cleared ({n} entr{'y' if n == 1 else 'ies'} removed). Corpus untouched.")
 
         if role_can("dllm"):
-            carrier_name = dllm_endpoint.get("carrier", "OpenRouter")
-            model_name = display_model_name(DLLM_MODEL)
             st.divider()
-            st.subheader("💬 Inference carrier")
-            if RETRIEVAL_ONLY:
-                st.caption(dllm_endpoint.get("detail", "Carrier offline — retrieval evidence and extraction still work."))
-                st.caption("Set `JLS_RETRIEVAL_ONLY=0` before launch to re-enable generation.")
-            else:
-                st.caption(
-                    f"{carrier_name} · {DLLM_MODEL}. The carrier writes the optional synthesis only; "
-                    "document names, pages, and evidence rows always come from Chroma retrieval."
-                )
-                # Single on/off for carrier synthesis — the generative RAG path, ON by default once the
-                # carrier is ready (key present + reachable).
-                synth_enabled = st.toggle(
-                    f"Synthesize answer with {model_name}",
-                    value=dllm_api_online,
-                    disabled=not dllm_api_online,
-                    help="Reads the question + retrieval evidence and writes a direct answer. Off falls "
-                         "back to deterministic extraction.",
-                )
-                # Carrier scope: Grounded (default) keeps the strict trust contract — answer only from the
-                # indexed documents, else refuse. Hybrid lets the carrier also answer general / natural-
-                # language questions from its own knowledge when the documents don't cover them.
-                answer_mode = st.radio(
-                    "Answer mode",
-                    ["Grounded", "Hybrid"],
-                    horizontal=True,
-                    disabled=not (dllm_api_online and synth_enabled),
-                    help="Grounded · answers strictly from the indexed documents (refuses otherwise). "
-                         "Hybrid · also answers general questions from the model's own knowledge.",
-                )
-                st.caption(
-                    "**Grounded** answers only from your indexed documents. **Hybrid** also answers "
-                    "natural-language / general questions from the model when the documents don't cover them."
-                )
-                # Secondary, optional: let the same carrier also repair PDF extraction artifacts in the
-                # grounded bullets. Off by default; orthogonal to the generative answer above.
-                dllm_enabled = st.checkbox(
-                    "Also clean extraction with carrier",
-                    value=False,
-                    disabled=not dllm_api_online,
-                    help="Applies a guarded in-place correction to the extractive bullets (never invents "
-                         "facts). Independent of the generative answer toggle.",
-                )
-                if not dllm_api_online:
-                    st.caption(dllm_endpoint.get("detail", "Carrier offline — retrieval evidence and extraction still work."))
+            render_openrouter_setup()
+            synth_enabled = dllm_api_online
+            answer_mode = st.radio("Answer mode", ["Grounded", "Hybrid"], horizontal=True,
+                                   disabled=not synth_enabled)
+
 elif not role_can("index") and not role_can("upload"):
     st.caption("📚 Corpus is curated by an administrator.")
 
@@ -1897,7 +1904,7 @@ if eval_rows:
 
 st.divider()
 mode_bits = [
-    "retrieval-only" if RETRIEVAL_ONLY else f"{DLLM_MODEL} synthesis available",
+    f"OpenRouter ? {dllm_endpoint.get('model')}" if dllm_api_online else "Configure OpenRouter for AI answers",
     "keyword-only" if KEYWORD_ONLY_RETRIEVAL else "hybrid semantic+keyword",
 ]
 st.caption(

@@ -3,16 +3,35 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
 
 from qwythlit_pane import (
     _DRAGON_B64,
     _PARTICLES,
+    QWYTHLIT_POSTER_URL,
     QWYTHLIT_PANE_CSS,
+    QWYTHLIT_VIDEO_URL,
     render_qwythlit_header_card,
+    render_qwythlit_media_background,
 )
 
 
 class TestQwythlitPane(unittest.TestCase):
+    def test_media_assets_exist(self):
+        static_dir = Path(__file__).resolve().parents[1] / "static"
+        self.assertGreater((static_dir / "qwyth.png").stat().st_size, 1_000_000)
+        self.assertGreater((static_dir / "qwythlit-intro.mp4").stat().st_size, 1_000_000)
+
+    def test_render_media_background(self):
+        markup = render_qwythlit_media_background("ask_lane")
+        self.assertIn(f'poster="{QWYTHLIT_POSTER_URL}"', markup)
+        self.assertIn(f'src="{QWYTHLIT_VIDEO_URL}"', markup)
+        self.assertIn('data-context="ask_lane"', markup)
+        self.assertIn("autoplay muted loop playsinline", markup)
+        self.assertIn("prefers-reduced-motion: reduce", markup)
+        with self.assertRaises(ValueError):
+            render_qwythlit_media_background("unsupported")
+
     def test_css_tokens(self):
         self.assertIn("--q-bg", QWYTHLIT_PANE_CSS)
         self.assertIn("qwythlit-card", QWYTHLIT_PANE_CSS)

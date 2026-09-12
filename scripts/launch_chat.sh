@@ -30,7 +30,7 @@ ensure_requirements() {
 }
 
 load_env() {
-    # Carrier + parrot config (JLS_PARROT_URL/MODEL, JLS_DLLM_*). Gitignored.
+    # Backend configuration. Gitignored.
     if [ -f "$ROOT_DIR/jls.env" ]; then
         say "Loading config from jls.env"
         set -a
@@ -44,11 +44,7 @@ say "Preparing launch from $ROOT_DIR"
 load_env
 ensure_venv
 ensure_requirements
-if [ "${JLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${JLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
-    say "The Ask Lane parrot uses the local model at ${JLS_PARROT_URL:-http://localhost:11434/v1} (${JLS_PARROT_MODEL:-qwen2.5:0.5b}). Start Ollama first: ollama serve"
-else
-    say "Retrieval-only mode active. The Ask Lane parrot is disabled."
-fi
+say "For OpenRouter model selection and API key setup, use the Streamlit Ask Lane."
 
 URL="http://localhost:$PORT"
 

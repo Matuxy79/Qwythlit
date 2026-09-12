@@ -2,7 +2,7 @@
 
 A Retrieval-Augmented and Cache-Augmented Generation (RAG+CAG) system for the John's Light Source (JLS), built with Streamlit, FastAPI, and ChromaDB. Retrieval is gated by JLS beamline metadata so each beamline lane can be queried independently or together.
 
-Temporary fast mode is enabled by default: generation is disabled and queries use deterministic keyword retrieval for millisecond lookups on the prototype corpus. Set `JLS_RETRIEVAL_ONLY=0` and `JLS_KEYWORD_ONLY=0` to restore hybrid semantic retrieval plus optional carrier synthesis.
+Queries use deterministic keyword retrieval by default. Configure OpenRouter in the sidebar for AI answers; set `JLS_KEYWORD_ONLY=0` to enable semantic retrieval.
 
 ## Beamline Scopes
 
@@ -26,7 +26,7 @@ DocuSearch-inspired: retrieval is instant and primary. The grounded extractive a
 The landing page offers two entry points:
 
 - **Full App** — Admin / User roles, corpus admin, upload, precision controls, graded eval, optional LLM synthesis.
-- **Ask Lane** — cinematic Qwythlit animated knowledge layer for instant retrieval: paired western wyvern familiar, dynamic synchrotron energy pulse, 3-stage lifecycle (`01 · Parse`, `02 · Retrieve`, `03 · Weave`), grounded evidence bullets with source chips, and a persistent floating `Qq` launcher widget.
+- **Ask Lane** — cinematic Qwythlit animated knowledge layer for instant retrieval: a full-bleed dragon video background with a still-image and reduced-motion fallback, paired western wyvern familiar, dynamic synchrotron energy pulse, 3-stage lifecycle (`01 · Parse`, `02 · Retrieve`, `03 · Weave`), grounded evidence bullets with source chips, and a persistent floating `Qq` launcher widget.
 
 Both UIs share the same underlying retrieval backend.
 
@@ -36,7 +36,7 @@ Both UIs share the same underlying retrieval backend.
 ./scripts/launch_jls.sh
 ```
 
-Creates `.venv` if needed, installs packages, and opens the UI at `http://localhost:8501`. Does not start Ollama or pull any LLM.
+Creates `.venv` if needed, installs packages, and opens the UI at `http://localhost:8501`. AI answers use OpenRouter.
 
 Fast mode defaults:
 
@@ -45,27 +45,11 @@ export JLS_RETRIEVAL_ONLY=1
 export JLS_KEYWORD_ONLY=1
 ```
 
-### Carrier (optional, Full App synthesis)
+### OpenRouter setup
 
-Carrier calls are disabled while `JLS_RETRIEVAL_ONLY=1`. To test generation again, set `JLS_RETRIEVAL_ONLY=0` and `JLS_KEYWORD_ONLY=0` before launch.
+In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key, choose a model, and click **Save settings**. **Refresh models** loads the live text model catalog; choose **Enter model ID?** to supply an ID manually. **Test key** validates your saved key without generating an answer. **Clear API key** removes the saved session credentials.
 
-The carrier is any OpenAI-compatible `/v1/chat/completions` endpoint. Pick one — no code change:
-
-```bash
-# Cloud (OpenRouter)
-export JLS_DLLM_API_KEY="sk-or-..."
-# export JLS_DLLM_API_URL="https://openrouter.ai/api/v1"   # default
-# export JLS_DLLM_MODEL="openai/gpt-oss-120b"              # default
-
-# Local llama.cpp (offline, no key) — run: llama-server -m model.gguf --port 8080
-# export JLS_DLLM_API_URL="http://localhost:8080/v1"
-# unset JLS_DLLM_API_KEY
-
-# Local Ollama
-# export JLS_DLLM_API_URL="http://localhost:11434/v1"
-```
-
-Without a carrier the app is fully offline: semantic retrieval + instant cited extraction. The **Ask Lane never uses the carrier** — it is retrieval-only by design.
+Credentials stay in the current Streamlit session and are never written to disk or process environment variables. The selected model is used for AI answers in both Streamlit views, including when retrieval uses the separate API bridge. These explicit session settings replace the old retrieval-only generation switch for the Streamlit UI. Without an enabled key, retrieval still works. The separate backend API retains its environment configuration.
 
 ## API + Dual Frontend
 

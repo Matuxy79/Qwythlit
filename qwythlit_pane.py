@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parent
+QWYTHLIT_POSTER_URL = "/app/static/qwyth.png"
+QWYTHLIT_VIDEO_URL = "/app/static/qwythlit-intro.mp4"
 _DRAGON_PATH = APP_ROOT / "animator" / "qwythlit-dragon-stub" / "public" / "qwythlit-dragon.jpg"
 if not _DRAGON_PATH.exists():
     _DRAGON_PATH = APP_ROOT / "animator" / "GreatGreenTransformer.jpg"
@@ -22,6 +24,69 @@ if _DRAGON_PATH.exists():
         _DRAGON_B64 = base64.b64encode(_DRAGON_PATH.read_bytes()).decode("ascii")
     except Exception:
         _DRAGON_B64 = ""
+
+
+def render_qwythlit_media_background(context: str = "home") -> str:
+    """Return a fixed video background with a still-image fallback."""
+    if context not in {"home", "ask_lane"}:
+        raise ValueError(f"Unsupported Qwythlit background context: {context}")
+
+    return f"""
+<style>
+.stApp:has(.qwythlit-media-bg) {{
+    isolation: isolate;
+    background: transparent !important;
+}}
+.stApp:has(.qwythlit-media-bg) div[data-testid="stAppViewContainer"],
+.stApp:has(.qwythlit-media-bg) section[data-testid="stMain"] {{
+    background: transparent !important;
+}}
+.stApp:has(.qwythlit-media-bg) div[data-testid="stMainBlockContainer"] {{
+    position: relative;
+    z-index: 1;
+}}
+.qwythlit-media-bg {{
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #111716 url("{QWYTHLIT_POSTER_URL}") center center / cover no-repeat;
+}}
+.qwythlit-media-bg video {{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    opacity: 1;
+}}
+.qwythlit-media-scrim {{
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(5, 8, 9, 0.38), rgba(5, 8, 9, 0.62)),
+        linear-gradient(90deg, rgba(5, 8, 9, 0.56), rgba(5, 8, 9, 0.18) 55%, rgba(5, 8, 9, 0.38));
+}}
+.qwythlit-media-bg[data-context="ask_lane"] .qwythlit-media-scrim {{
+    background:
+        linear-gradient(180deg, rgba(4, 7, 9, 0.68), rgba(4, 7, 9, 0.82)),
+        linear-gradient(90deg, rgba(5, 10, 11, 0.64), rgba(5, 10, 11, 0.38) 55%, rgba(5, 10, 11, 0.66));
+}}
+@media (max-width: 700px) {{
+    .qwythlit-media-bg {{ background-position: 44% center; }}
+    .qwythlit-media-bg video {{ object-position: 48% center; }}
+}}
+@media (prefers-reduced-motion: reduce) {{
+    .qwythlit-media-bg video {{ display: none; }}
+}}
+</style>
+<div class="qwythlit-media-bg" data-context="{context}" aria-hidden="true">
+    <video autoplay muted loop playsinline preload="metadata" poster="{QWYTHLIT_POSTER_URL}" tabindex="-1" disablepictureinpicture>
+        <source src="{QWYTHLIT_VIDEO_URL}" type="video/mp4">
+    </video>
+    <div class="qwythlit-media-scrim"></div>
+</div>
+""".strip()
 
 QWYTHLIT_PANE_CSS = """
 <style>

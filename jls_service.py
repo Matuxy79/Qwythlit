@@ -772,7 +772,7 @@ def generate_answer(
 
     Opt-in generative RAG path: unlike `call_dllm_api` correction, this reads the question +
     retrieved passages and writes a direct answer. Uses the same OpenAI-compatible endpoint, so
-    it works against Ollama, OpenRouter, Groq, etc.
+    it supports OpenRouter.
 
     `grounded=True` (default) is the strict path: answer only from the context, and refuse with
     "Not found in the indexed documents." when it does not cover the question. `grounded=False`

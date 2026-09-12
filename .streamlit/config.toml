@@ -9,6 +9,7 @@ maxMessageSize = 2000
 # don't install) and spam the console with harmless ModuleNotFoundError tracebacks.
 # The launcher restarts the app anyway, so live-reload isn't needed here.
 fileWatcherType = "none"
+enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
