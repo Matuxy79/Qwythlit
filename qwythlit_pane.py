@@ -1,7 +1,7 @@
 """Qwythlit animated pane — cinematic micro-stub for the Ask Lane.
 
-Renders the chromatic familiar, dynamic synchrotron beam pulse, lifecycle
-state indicators (01 · Parse, 02 · Retrieve, 03 · Weave), and floating 'Q' launcher.
+Renders paired western wyverns, a dynamic synchrotron beam pulse, lifecycle
+state indicators (01 · Parse, 02 · Retrieve, 03 · Weave), and the Ask Lane card.
 """
 
 from __future__ import annotations
@@ -34,11 +34,11 @@ QWYTHLIT_PANE_CSS = """
     --q-ink: #f7f7ff;
     --q-muted: #8c93ad;
     --q-faint: #59617d;
-    --q-cyan: #00f4d2;
-    --q-magenta: #d946ef;
-    --q-amber: #ffbe0b;
-    --q-orange: #ff5e36;
-    --q-indigo: #7a5cff;
+    --q-cyan: #62d3bc;
+    --q-magenta: #78a69b;
+    --q-amber: #d8c9a2;
+    --q-orange: #9b7653;
+    --q-indigo: #557184;
 }
 
 html, body, #root {
@@ -51,9 +51,9 @@ html, body, #root {
 div[data-testid="stAppViewContainer"],
 section[data-testid="stMain"] {
     background:
-        radial-gradient(circle at 72% 30%, rgba(122, 92, 255, 0.16), transparent 38rem),
-        radial-gradient(circle at 18% 75%, rgba(0, 244, 210, 0.08), transparent 34rem),
-        radial-gradient(circle at 50% 10%, rgba(255, 94, 54, 0.06), transparent 28rem),
+        radial-gradient(circle at 72% 30%, rgba(85, 113, 132, 0.18), transparent 38rem),
+        radial-gradient(circle at 18% 75%, rgba(98, 211, 188, 0.09), transparent 34rem),
+        radial-gradient(circle at 50% 10%, rgba(155, 118, 83, 0.06), transparent 28rem),
         var(--q-bg) !important;
     color: var(--q-ink) !important;
 }
@@ -83,9 +83,9 @@ section[data-testid="stSidebar"] div[data-baseweb="select"] input {
     background: transparent !important;
 }
 section[data-testid="stSidebar"] div[data-baseweb="tag"] {
-    background: rgba(122, 92, 255, 0.25) !important;
-    border: 1px solid rgba(122, 92, 255, 0.5) !important;
-    color: #e2d9ff !important;
+    background: rgba(85, 113, 132, 0.25) !important;
+    border: 1px solid rgba(98, 211, 188, 0.42) !important;
+    color: #d2e6e1 !important;
     border-radius: 999px !important;
 }
 
@@ -141,7 +141,7 @@ li[role="option"][aria-selected="true"] {
     padding: 2rem 2.2rem 2rem;
     box-shadow:
         0 24px 70px rgba(0, 0, 0, 0.75),
-        0 0 60px rgba(122, 92, 255, 0.14);
+        0 0 60px rgba(64, 169, 148, 0.14);
     backdrop-filter: blur(28px);
     position: relative;
     overflow: hidden;
@@ -163,7 +163,7 @@ li[role="option"][aria-selected="true"] {
     width: 22px;
     height: 22px;
     border-radius: 6px;
-    background: linear-gradient(135deg, #ff5e36, #ffbe0b 35%, #00f4d2 70%, #7a5cff);
+    background: linear-gradient(135deg, #285e59, #72b7a7 52%, #557184);
     display: inline-block;
     box-shadow: 0 0 12px rgba(0, 244, 210, 0.5);
 }
@@ -221,7 +221,7 @@ li[role="option"][aria-selected="true"] {
     width: 220px;
     height: 220px;
     border-radius: 50%;
-    background: conic-gradient(from 30deg, #ff5e36, #ffbe0b, #00f4d2, #3a86ff, #a855f7, #ff5e36);
+    background: conic-gradient(from 30deg, #285e59, #7fb7aa, #496b7c, #285e59);
     filter: blur(55px);
     opacity: 0.18;
     animation: qHaloSpin 16s linear infinite;
@@ -231,26 +231,38 @@ li[role="option"][aria-selected="true"] {
     to { transform: rotate(360deg); }
 }
 
-/* Dragon subtle watermark backdrop */
+/* Mirrored western wyvern backdrop */
 .qwythlit-dragon-bg {
     position: absolute;
-    width: 240px;
-    height: 160px;
-    opacity: 0.22;
+    top: 18px;
+    width: 215px;
+    height: 154px;
+    opacity: 0.24;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-    filter: drop-shadow(0 0 24px rgba(122, 92, 255, 0.6));
+    filter: grayscale(1) sepia(0.3) hue-rotate(112deg) saturate(1.65) brightness(0.78) contrast(1.2) drop-shadow(0 0 18px rgba(64, 169, 148, 0.48));
     mix-blend-mode: screen;
     pointer-events: none;
-    animation: qDragonFloat 6s ease-in-out infinite;
 }
-@keyframes qDragonFloat {
-    0%, 100% { transform: translateY(0px) scale(1); }
+.qwythlit-dragon-bg.is-left {
+    left: -20px;
+    animation: qDragonFloatLeft 6s ease-in-out infinite;
+}
+.qwythlit-dragon-bg.is-right {
+    right: -20px;
+    animation: qDragonFloatRight 6s -3s ease-in-out infinite;
+}
+@keyframes qDragonFloatLeft {
+    0%, 100% { transform: translateY(0) scale(1); }
     50% { transform: translateY(-6px) scale(1.03); }
 }
+@keyframes qDragonFloatRight {
+    0%, 100% { transform: translateY(0) scaleX(-1); }
+    50% { transform: translateY(-6px) scaleX(-1) scale(1.03); }
+}
 
-/* Chromatic particles */
+/* Ambient wyvern motes */
 .q-particle {
     position: absolute;
     border-radius: 50%;
@@ -268,7 +280,7 @@ li[role="option"][aria-selected="true"] {
     }
 }
 
-/* Rainbow Synchrotron Spectral Beam */
+/* Two-tone synchrotron energy beam */
 .qwythlit-beam-wrap {
     position: relative;
     width: 82%;
@@ -279,7 +291,7 @@ li[role="option"][aria-selected="true"] {
     position: absolute;
     inset: -6px -4px;
     border-radius: 999px;
-    background: linear-gradient(90deg, #ff5e36 0%, #ffbe0b 25%, #00f4d2 50%, #3a86ff 75%, #a855f7 100%);
+    background: linear-gradient(90deg, #285e59 0%, #72b7a7 42%, #e4efeb 50%, #557184 100%);
     filter: blur(14px);
     opacity: 0.72;
     animation: qBeamBreathe 3s ease-in-out infinite alternate;
@@ -289,7 +301,7 @@ li[role="option"][aria-selected="true"] {
     width: 100%;
     height: 14px;
     border-radius: 999px;
-    background: linear-gradient(90deg, #ff5e36 0%, #ffbe0b 22%, #00f4d2 48%, #3a86ff 72%, #a855f7 100%);
+    background: linear-gradient(90deg, #234f4b 0%, #62d3bc 44%, #f1f6f4 50%, #456779 100%);
     overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 244, 210, 0.5), 0 0 35px rgba(122, 92, 255, 0.4);
 }
@@ -440,7 +452,7 @@ div[data-testid="stChatInput"] textarea::placeholder {
 }
 button[data-testid="stChatInputSubmitButton"] {
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #ff5e36, #ffbe0b 35%, #00f4d2 70%, #7a5cff) !important;
+    background: linear-gradient(135deg, #285e59, #72b7a7 55%, #557184) !important;
     border: 0 !important;
     box-shadow: 0 0 18px rgba(0, 244, 210, 0.45) !important;
     transition: transform 0.2s ease, filter 0.2s ease !important;
@@ -464,17 +476,14 @@ button[data-testid="stChatInputSubmitButton"] svg {
 .q-launcher-btn {
     width: 54px;
     height: 54px;
-    border-radius: 17px;
-    background: #090c22;
-    border: 2px solid transparent;
-    background-image: linear-gradient(#090c22, #090c22), conic-gradient(from 180deg, #ff5e36, #ffbe0b, #00f4d2, #3a86ff, #a855f7, #ff5e36);
-    background-origin: border-box;
-    background-clip: content-box, border-box;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 24%, #ffffff, #e4efeb 58%, #cedadd);
+    border: 2px solid #4c8277;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 28px rgba(122, 92, 255, 0.45), 0 8px 24px rgba(0,0,0,0.6);
-    color: #ffffff;
+    box-shadow: 0 0 28px rgba(64, 169, 148, 0.4), 0 8px 24px rgba(0,0,0,0.45);
+    color: #285e59;
     font-family: 'Outfit', sans-serif;
     font-size: 1.35rem;
     font-weight: 850;
@@ -484,7 +493,7 @@ button[data-testid="stChatInputSubmitButton"] svg {
 }
 .q-launcher-btn:hover {
     transform: scale(1.08) translateY(-2px);
-    box-shadow: 0 0 40px rgba(122, 92, 255, 0.75), 0 12px 30px rgba(0,0,0,0.7);
+    box-shadow: 0 0 40px rgba(64, 169, 148, 0.62), 0 12px 30px rgba(0,0,0,0.55);
 }
 
 /* Native chat message cards in lane */
@@ -516,25 +525,25 @@ div[data-testid="stBottom"] > div {
 </style>
 """
 
-# Pre-computed 22 chromatic particles with varied positions, sizes, and animations
+# Ambient particles in the wyvern palette with varied positions and motion
 _PARTICLES = [
-    {"top": 28, "left": 40, "size": 6, "color": "#00f4d2", "dx": "14px", "dy": "-18px", "dur": "3.2s", "delay": "0s", "op": 0.5},
-    {"top": 35, "left": 55, "size": 4, "color": "#ffbe0b", "dx": "-12px", "dy": "-15px", "dur": "2.8s", "delay": "-0.5s", "op": 0.45},
-    {"top": 24, "left": 70, "size": 8, "color": "#7a5cff", "dx": "10px", "dy": "14px", "dur": "4.1s", "delay": "-1.2s", "op": 0.6},
-    {"top": 42, "left": 25, "size": 5, "color": "#d946ef", "dx": "-10px", "dy": "-12px", "dur": "3.5s", "delay": "-0.8s", "op": 0.4},
-    {"top": 68, "left": 35, "size": 7, "color": "#ff5e36", "dx": "12px", "dy": "-14px", "dur": "3.0s", "delay": "-1.5s", "op": 0.55},
-    {"top": 72, "left": 65, "size": 4, "color": "#00f4d2", "dx": "-15px", "dy": "10px", "dur": "3.8s", "delay": "-0.3s", "op": 0.45},
-    {"top": 30, "left": 80, "size": 5, "color": "#ffbe0b", "dx": "8px", "dy": "-16px", "dur": "2.9s", "delay": "-1.9s", "op": 0.5},
-    {"top": 62, "left": 82, "size": 6, "color": "#3a86ff", "dx": "-14px", "dy": "-10px", "dur": "3.6s", "delay": "-0.7s", "op": 0.4},
+    {"top": 28, "left": 40, "size": 6, "color": "#62d3bc", "dx": "14px", "dy": "-18px", "dur": "3.2s", "delay": "0s", "op": 0.5},
+    {"top": 35, "left": 55, "size": 4, "color": "#d8c9a2", "dx": "-12px", "dy": "-15px", "dur": "2.8s", "delay": "-0.5s", "op": 0.45},
+    {"top": 24, "left": 70, "size": 8, "color": "#557184", "dx": "10px", "dy": "14px", "dur": "4.1s", "delay": "-1.2s", "op": 0.6},
+    {"top": 42, "left": 25, "size": 5, "color": "#78a69b", "dx": "-10px", "dy": "-12px", "dur": "3.5s", "delay": "-0.8s", "op": 0.4},
+    {"top": 68, "left": 35, "size": 7, "color": "#3f7f75", "dx": "12px", "dy": "-14px", "dur": "3.0s", "delay": "-1.5s", "op": 0.55},
+    {"top": 72, "left": 65, "size": 4, "color": "#62d3bc", "dx": "-15px", "dy": "10px", "dur": "3.8s", "delay": "-0.3s", "op": 0.45},
+    {"top": 30, "left": 80, "size": 5, "color": "#d8c9a2", "dx": "8px", "dy": "-16px", "dur": "2.9s", "delay": "-1.9s", "op": 0.5},
+    {"top": 62, "left": 82, "size": 6, "color": "#557184", "dx": "-14px", "dy": "-10px", "dur": "3.6s", "delay": "-0.7s", "op": 0.4},
     {"top": 20, "left": 48, "size": 3, "color": "#ffffff", "dx": "6px", "dy": "12px", "dur": "2.5s", "delay": "-1.1s", "op": 0.65},
-    {"top": 75, "left": 50, "size": 5, "color": "#d946ef", "dx": "15px", "dy": "8px", "dur": "4.0s", "delay": "-2.1s", "op": 0.45},
-    {"top": 48, "left": 18, "size": 4, "color": "#ffbe0b", "dx": "-8px", "dy": "15px", "dur": "3.3s", "delay": "-1.4s", "op": 0.4},
-    {"top": 58, "left": 75, "size": 6, "color": "#00f4d2", "dx": "10px", "dy": "-12px", "dur": "3.1s", "delay": "-0.9s", "op": 0.5},
-    {"top": 32, "left": 30, "size": 7, "color": "#7a5cff", "dx": "-12px", "dy": "14px", "dur": "3.7s", "delay": "-1.7s", "op": 0.5},
+    {"top": 75, "left": 50, "size": 5, "color": "#78a69b", "dx": "15px", "dy": "8px", "dur": "4.0s", "delay": "-2.1s", "op": 0.45},
+    {"top": 48, "left": 18, "size": 4, "color": "#d8c9a2", "dx": "-8px", "dy": "15px", "dur": "3.3s", "delay": "-1.4s", "op": 0.4},
+    {"top": 58, "left": 75, "size": 6, "color": "#62d3bc", "dx": "10px", "dy": "-12px", "dur": "3.1s", "delay": "-0.9s", "op": 0.5},
+    {"top": 32, "left": 30, "size": 7, "color": "#557184", "dx": "-12px", "dy": "14px", "dur": "3.7s", "delay": "-1.7s", "op": 0.5},
     {"top": 65, "left": 22, "size": 3, "color": "#ffffff", "dx": "8px", "dy": "-10px", "dur": "2.7s", "delay": "-0.4s", "op": 0.6},
-    {"top": 26, "left": 62, "size": 5, "color": "#ff5e36", "dx": "-14px", "dy": "-8px", "dur": "3.4s", "delay": "-2.0s", "op": 0.45},
-    {"top": 78, "left": 72, "size": 6, "color": "#ffbe0b", "dx": "12px", "dy": "10px", "dur": "3.9s", "delay": "-1.3s", "op": 0.5},
-    {"top": 45, "left": 86, "size": 4, "color": "#00f4d2", "dx": "-10px", "dy": "12px", "dur": "3.0s", "delay": "-0.6s", "op": 0.4},
+    {"top": 26, "left": 62, "size": 5, "color": "#3f7f75", "dx": "-14px", "dy": "-8px", "dur": "3.4s", "delay": "-2.0s", "op": 0.45},
+    {"top": 78, "left": 72, "size": 6, "color": "#d8c9a2", "dx": "12px", "dy": "10px", "dur": "3.9s", "delay": "-1.3s", "op": 0.5},
+    {"top": 45, "left": 86, "size": 4, "color": "#62d3bc", "dx": "-10px", "dy": "12px", "dur": "3.0s", "delay": "-0.6s", "op": 0.4},
 ]
 
 
@@ -560,7 +569,11 @@ def render_qwythlit_header_card(
 
     dragon_bg_html = ""
     if _DRAGON_B64:
-        dragon_bg_html = f'<div class="qwythlit-dragon-bg" style="background-image:url(data:image/jpeg;base64,{_DRAGON_B64});"></div>'
+        dragon_style = f"background-image:url(data:image/jpeg;base64,{_DRAGON_B64});"
+        dragon_bg_html = (
+            f'<div class="qwythlit-dragon-bg is-left" style="{dragon_style}"></div>'
+            f'<div class="qwythlit-dragon-bg is-right" style="{dragon_style}"></div>'
+        )
 
     s1_class = "is-complete" if stage_idx > 1 else ("is-active" if stage_idx == 1 else "")
     s2_class = "is-complete" if stage_idx > 2 else ("is-active" if stage_idx == 2 else "")
@@ -595,11 +608,11 @@ def render_qwythlit_header_card(
         </div>
         """
 
-    return f"""
+    markup = f"""
     <div class="qwythlit-shell">
         <div class="qwythlit-hero">
             <h1>Knowledge, retrieved with a pulse.</h1>
-            <p>A cinematic micro-stub for Qwythlit: chromatic familiar, retrieval state, and a compact launcher mounted over the existing app shell.</p>
+            <p>A cinematic micro-stub for Qwythlit: paired wyvern familiar, retrieval state, and a compact launcher mounted over the existing app shell.</p>
         </div>
 
         <div class="qwythlit-card">
@@ -650,3 +663,4 @@ def render_qwythlit_header_card(
         </div>
     </div>
     """
+    return "".join(line.strip() for line in markup.splitlines())

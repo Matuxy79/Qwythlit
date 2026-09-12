@@ -26,7 +26,7 @@ DocuSearch-inspired: retrieval is instant and primary. The grounded extractive a
 The landing page offers two entry points:
 
 - **Full App** — Admin / User roles, corpus admin, upload, precision controls, graded eval, optional LLM synthesis.
-- **Ask Lane** — cinematic Qwythlit animated knowledge layer for instant retrieval: floating chromatic familiar, dynamic synchrotron spectral beam pulse, 3-stage lifecycle (`01 · Parse`, `02 · Retrieve`, `03 · Weave`), grounded evidence bullets with source chips, and a persistent floating `Q` launcher widget.
+- **Ask Lane** — cinematic Qwythlit animated knowledge layer for instant retrieval: paired western wyvern familiar, dynamic synchrotron energy pulse, 3-stage lifecycle (`01 · Parse`, `02 · Retrieve`, `03 · Weave`), grounded evidence bullets with source chips, and a persistent floating `Qq` launcher widget.
 
 Both UIs share the same underlying retrieval backend.
 

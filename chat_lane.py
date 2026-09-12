@@ -63,7 +63,7 @@ async def start():
     cl.user_session.set("scope", scopes[0])
     await cl.Message(
         content=(
-            f"### 🌈 Qwythlit Ask Lane · John's Synchrotron `{APP_VERSION}`\n"
+            f"### 🐉 Qwythlit Ask Lane · John's Synchrotron `{APP_VERSION}`\n"
             "**Ask the knowledge layer** — instant cited answers from your indexed documents with pulse retrieval. "
             + (
                 "Temporary retrieval-only mode is active; no model answer will run."

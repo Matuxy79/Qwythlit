@@ -2,12 +2,12 @@
 
 ## Intent
 
-Use the supplied rainbow dragon artwork as a **visual metaphor for Qwythlit's retrieval pipeline**:
+Use the supplied western wyvern artwork as a **visual metaphor for Qwythlit's retrieval pipeline**:
 
 - dragon body = synthesis / context core
 - wing span = retrieval fan-out
 - orbiting UI nodes = sources and processing stages
-- rainbow breath = evidence stream / grounded response
+- focused energy breath = evidence stream / grounded response
 - particles = retrieved chunks or citations
 - trace list = observable ranked retrieval results
 

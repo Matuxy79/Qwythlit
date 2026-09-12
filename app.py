@@ -795,32 +795,32 @@ def _render_scope_summary(scope: str, result: dict | None, *, dllm_online: bool)
 
 
 def _render_floating_q_launcher(current_mode: str) -> None:
-    """Floating Q launcher widget in bottom-right corner with glowing rainbow border."""
+    """Floating Qq launcher widget with a rotating western wyvern mark."""
     st.markdown(
         """
         <style>
+        @keyframes qwythlit-wyvern-orbit {
+            to { transform: rotate(360deg); }
+        }
         div.st-key-float_q_launcher {
             position: fixed !important;
-            bottom: 24px !important;
+            bottom: __QWYTHLIT_LAUNCHER_BOTTOM__ !important;
             right: 24px !important;
             z-index: 999999 !important;
-            width: 56px !important;
-            height: 56px !important;
+            width: 60px !important;
+            height: 60px !important;
         }
         div.st-key-float_q_launcher button {
-            width: 56px !important;
-            height: 56px !important;
-            border-radius: 18px !important;
-            background: #090c22 !important;
-            border: 2px solid transparent !important;
-            background-image: linear-gradient(#090c22, #090c22), conic-gradient(from 180deg, #ff5e36, #ffbe0b, #00f4d2, #3a86ff, #a855f7, #ff5e36) !important;
-            background-origin: border-box !important;
-            background-clip: content-box, border-box !important;
-            box-shadow: 0 0 28px rgba(122, 92, 255, 0.55), 0 8px 24px rgba(0,0,0,0.6) !important;
-            color: #ffffff !important;
-            font-size: 1.45rem !important;
-            font-weight: 900 !important;
-            font-family: 'Outfit', 'Inter', sans-serif !important;
+            position: relative !important;
+            isolation: isolate !important;
+            overflow: hidden !important;
+            width: 60px !important;
+            height: 60px !important;
+            min-height: 60px !important;
+            border-radius: 50% !important;
+            border: 1px solid rgba(34, 111, 103, 0.38) !important;
+            background: radial-gradient(circle at 34% 24%, #ffffff 0 18%, #effaf6 54%, #e4ecec 100%) !important;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.72), 0 0 28px rgba(31, 126, 115, 0.32), 0 10px 28px rgba(42, 65, 74, 0.2) !important;
             padding: 0 !important;
             display: flex !important;
             align-items: center !important;
@@ -828,17 +828,55 @@ def _render_floating_q_launcher(current_mode: str) -> None:
             cursor: pointer !important;
             transition: transform 0.22s ease, box-shadow 0.22s ease !important;
         }
+        div.st-key-float_q_launcher button p {
+            position: relative !important;
+            z-index: 2 !important;
+            margin: 0 !important;
+            color: transparent !important;
+            background: linear-gradient(135deg, #0b7568 8%, #31566d 92%) !important;
+            background-clip: text !important;
+            -webkit-background-clip: text !important;
+            font-family: 'Outfit', 'Segoe UI', sans-serif !important;
+            font-size: 1.18rem !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            letter-spacing: 0 !important;
+            text-shadow: 0 2px 10px rgba(18, 155, 137, 0.12) !important;
+        }
+        div.st-key-float_q_launcher button::before {
+            content: "";
+            position: absolute;
+            inset: 2px;
+            z-index: 1;
+            border-radius: 50%;
+            background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23165f58' d='M47 13l8-5-2 7 6 3-7 2-4 7-3-7-6-2 6-2z'/%3E%3Ccircle cx='52' cy='16' r='1.3' fill='%23f7fbf8'/%3E%3Cpath d='M47 20c8 8 9 20 3 29-7 10-21 13-31 7 8-1 14-5 17-11 3-7 1-14-4-19' fill='none' stroke='%23165f58' stroke-width='3.6' stroke-linecap='round'/%3E%3Cpath fill='%23436f80' d='M35 28 17 11l4 12-12 2 19 10zM39 38l15-8-5 10 7 4-17 2z'/%3E%3Cpath d='m28 48-5 7m17-9 4 8' fill='none' stroke='%23165f58' stroke-width='2.8' stroke-linecap='round'/%3E%3C/svg%3E");
+            filter: drop-shadow(0 2px 3px rgba(22, 95, 88, 0.24));
+            animation: qwythlit-wyvern-orbit 7.2s linear infinite;
+            pointer-events: none;
+        }
         div.st-key-float_q_launcher button:hover {
-            transform: scale(1.12) translateY(-2px) !important;
-            box-shadow: 0 0 42px rgba(122, 92, 255, 0.85), 0 14px 32px rgba(0,0,0,0.75) !important;
+            transform: scale(1.08) translateY(-2px) !important;
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.86), 0 0 38px rgba(31, 126, 115, 0.46), 0 14px 32px rgba(42, 65, 74, 0.26) !important;
+        }
+        div.st-key-float_q_launcher button:focus-visible {
+            outline: 3px solid rgba(16, 163, 127, 0.5) !important;
+            outline-offset: 4px !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            div.st-key-float_q_launcher button::before {
+                animation: none;
+            }
         }
         </style>
-        """,
+        """.replace(
+            "__QWYTHLIT_LAUNCHER_BOTTOM__",
+            "120px" if current_mode == "ask_lane" else "24px",
+        ),
         unsafe_allow_html=True,
     )
     target = "ask_lane" if current_mode != "ask_lane" else "full"
     tip = "Open Qwythlit Ask Lane" if current_mode != "ask_lane" else "Return to Full App"
-    if st.button("Q", key="float_q_launcher", help=tip):
+    if st.button("Qq", key="float_q_launcher", help=tip):
         st.session_state["ui_mode"] = target
         st.rerun()
 
@@ -848,7 +886,7 @@ def _render_ask_lane() -> None:
     dllm_online = dllm_api_status().get("online", False)
     dllm_model = dllm_api_status().get("model", DLLM_MODEL) if dllm_online else None
 
-    # Inject cinematic Qwythlit styling: cosmic dark canvas, glowing particle familiar,
+    # Inject cinematic Qwythlit styling: cosmic dark canvas, paired wyvern familiar,
     # synchrotron spectral beam pulse, and glassmorphism cards.
     st.markdown(QWYTHLIT_PANE_CSS, unsafe_allow_html=True)
 
@@ -1041,7 +1079,7 @@ def _home_gate() -> None:
         with right_card:
             st.markdown(
                 '<div class="jls-mode-card">'
-                '<h4>🌈 Qwythlit Ask Lane</h4>'
+                '<h4>🐉 Qwythlit Ask Lane</h4>'
                 '<p>Cinematic knowledge layer — animated familiar, spectral beam pulse, and grounded answers.</p>'
                 '</div>',
                 unsafe_allow_html=True,
@@ -1111,7 +1149,7 @@ st.markdown(
       }
       .jls-spectrum-rule {
         height: 5px; border-radius: 999px; margin: 0.15rem 0 0;
-        background: linear-gradient(90deg,var(--rose),var(--orange),var(--amber),var(--green),var(--blue),#b478ff);
+                background: linear-gradient(90deg, #285e59, #72b7a7 44%, #e4efeb 50%, #557184);
       }
       .jls-hero {
         border-radius: 14px; padding: 1.15rem 1.35rem 1rem; margin-bottom: 1.25rem;

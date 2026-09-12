@@ -31,6 +31,10 @@ class TestQwythlitPane(unittest.TestCase):
 
     def test_render_empty_card(self):
         html = render_qwythlit_header_card(status="READY", status_active=False, stage_idx=0)
+        self.assertNotIn("\n", html)
+        self.assertEqual(html.count('class="qwythlit-dragon-bg'), 2)
+        self.assertIn("is-left", html)
+        self.assertIn("is-right", html)
         self.assertIn("Q W Y T H L I T", html)
         self.assertIn("READY", html)
         self.assertIn("01 · Parse", html)

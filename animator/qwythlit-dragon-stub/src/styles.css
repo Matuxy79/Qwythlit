@@ -42,8 +42,8 @@ button, input { font: inherit; }
 .brand-mark {
   width: 42px; height: 42px; display: grid; place-items: center;
   border-radius: 13px;
-  background: linear-gradient(145deg, #6d5cff, #13e2ff);
-  box-shadow: 0 0 32px rgba(75, 110, 255, .28);
+  background: linear-gradient(145deg, #285e59, #72b7a7 58%, #557184);
+  box-shadow: 0 0 32px rgba(64, 169, 148, .28);
   font-weight: 900;
 }
 .brand strong, .brand small { display: block; }
@@ -68,7 +68,7 @@ button, input { font: inherit; }
 .copy { position: relative; z-index: 10; max-width: 650px; }
 .kicker {
   margin: 0 0 1rem;
-  color: #8b8cff;
+  color: #8db9ae;
   letter-spacing: .18em;
   font-size: .72rem;
   font-weight: 800;
@@ -84,7 +84,7 @@ h1 span {
   display: block;
   margin-top: .15em;
   color: transparent;
-  background: linear-gradient(90deg, #7d6dff 5%, #4fe2ff 38%, #55ffd0 64%, #ff5dcb 100%);
+  background: linear-gradient(90deg, #d8c9a2 5%, #72b7a7 48%, #557184 100%);
   -webkit-background-clip: text;
   background-clip: text;
 }
@@ -118,7 +118,7 @@ h1 span {
 .querybar button {
   border: 0;
   color: #071019;
-  background: linear-gradient(135deg, #65fbd2, #70c8ff 48%, #9c80ff);
+  background: linear-gradient(135deg, #72b7a7, #dce9e4 52%, #557184);
   border-radius: 13px;
   padding: .9rem 1rem;
   display: flex; align-items: center; gap: .45rem;
@@ -157,6 +157,7 @@ h1 span {
   object-fit: contain;
   mix-blend-mode: screen;
   opacity: .96;
+  filter: grayscale(1) sepia(.3) hue-rotate(112deg) saturate(1.65) brightness(.78) contrast(1.2);
   border-radius: 40px;
   -webkit-mask-image: radial-gradient(ellipse 65% 72% at 50% 50%, #000 56%, transparent 96%);
   mask-image: radial-gradient(ellipse 65% 72% at 50% 50%, #000 56%, transparent 96%);
@@ -177,7 +178,7 @@ h1 span {
   left: 17%;
   top: 13%;
   border-radius: 50%;
-  background: conic-gradient(from 40deg, #40ffd7, #5158ff, #e337ff, #ff5e5e, #ffc738, #40ffd7);
+  background: conic-gradient(from 40deg, #285e59, #7fb7aa, #496b7c, #285e59);
   filter: blur(56px);
   opacity: .09;
   animation: spin 14s linear infinite;
@@ -202,7 +203,7 @@ h1 span {
   border-radius: 50%;
   filter: blur(9px);
   transform-origin: right center;
-  background: linear-gradient(90deg, transparent 0%, #fd3a55 18%, #ffb826 35%, #42ff9b 55%, #25caff 74%, #a862ff 90%);
+  background: linear-gradient(90deg, transparent 0%, #285e59 18%, #72b7a7 48%, #eef5f2 62%, #557184 90%);
   clip-path: polygon(0 45%, 100% 0, 94% 51%, 100% 100%, 0 58%);
 }
 .breath-core { animation: breathe 1.2s ease-in-out infinite alternate; }

@@ -92,7 +92,7 @@ export default function App() {
         <div className="visual" aria-label="Animated Qwythlit retrieval visualization">
           <div className="halo" />
           <div className="dragon-wrap">
-            <img src="/qwythlit-dragon.jpg" alt="Rainbow spectral dragon" />
+            <img src="/qwythlit-dragon.jpg" alt="Western wyvern familiar" />
             <div className="dragon-sheen" />
           </div>
 
