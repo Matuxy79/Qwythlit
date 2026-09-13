@@ -13,7 +13,7 @@ from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parent
 QWYTHLIT_POSTER_URL = "/app/static/qwyth.png"
-QWYTHLIT_VIDEO_URL = "/app/static/qwythlit-intro.mp4"
+QWYTHLIT_VIDEO_URL = "/app/static/qwythlit-intro.mp4?v=starless-1"
 _DRAGON_PATH = APP_ROOT / "animator" / "qwythlit-dragon-stub" / "public" / "qwythlit-dragon.jpg"
 if not _DRAGON_PATH.exists():
     _DRAGON_PATH = APP_ROOT / "animator" / "GreatGreenTransformer.jpg"
