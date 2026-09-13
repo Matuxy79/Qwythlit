@@ -3,7 +3,7 @@
 
 Walks <root>/<beamline_slug>/ and indexes every supported file, tagging each
 chunk with `domain=<beamline_slug>` so the Research Scope filter in the UI
-(cls_config.RESEARCH_SCOPES) returns the right slice. The folder name *is* the
+(jls_config.RESEARCH_SCOPES) returns the right slice. The folder name *is* the
 beamline slug from the shared scope map — for example `bmit`, `cmcf`,
 `reixs`, `vespers` — so there is no per-file metadata to maintain.
 

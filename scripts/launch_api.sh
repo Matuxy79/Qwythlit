@@ -63,14 +63,14 @@ pick_python
 ensure_venv
 ensure_requirements
 
-if [ "${JLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${JLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
+if [ "${JLS_RETRIEVAL_ONLY:-0}" = "1" ] || [ "${JLS_RETRIEVAL_ONLY:-0}" = "true" ]; then
+    say "Retrieval-only mode active; carrier proxy endpoints are disabled."
+else
     if [ -n "${JLS_DLLM_API_URL:-}" ]; then
         say "Inference carrier endpoint: $JLS_DLLM_API_URL"
     else
         say "Using default inference carrier endpoint unless overridden by JLS_DLLM_API_URL."
     fi
-else
-    say "Retrieval-only mode active; carrier proxy endpoints are disabled."
 fi
 
 if [ "${LAUNCHER_DRY_RUN:-0}" = "1" ]; then

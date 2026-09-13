@@ -15,7 +15,9 @@ CAG cache look-up, and answer assembly happen there and in ``jls_backend/``; thi
 file is pure presentation.
 
 Key environment switches (set in ``jls.env`` before launch):
-    JLS_RETRIEVAL_ONLY=1  — disables the generative carrier (default ON).
+    JLS_RETRIEVAL_ONLY=1  — hard-disables the generative carrier (default OFF;
+                            the sidebar "Generate via OpenRouter" toggle is the
+                            only retrieval-only switch).
     JLS_KEYWORD_ONLY=1    — disables semantic vector search; lexical only (default ON).
 
 Start the app:  ./scripts/launch_jls.sh   (creates .venv, installs deps, opens browser)
@@ -159,7 +161,7 @@ def render_evidence_store(rows: list[dict]) -> None:
 
 
 API_URL = DEFAULT_API_URL.rstrip("/")
-USE_API_BACKEND = any(os.getenv(v, "0").strip().lower() in {"1", "true", "yes", "on"} for v in ("JLS_USE_API", "JS_USE_API", "CLS_USE_API"))
+USE_API_BACKEND = any(os.getenv(v, "0").strip().lower() in {"1", "true", "yes", "on"} for v in ("JLS_USE_API", "JS_USE_API"))
 
 
 @st.cache_resource(show_spinner=False)
@@ -1756,7 +1758,7 @@ left, right = st.columns([1.05, 1], gap="large")
 with left:
     st.subheader("🔎 Search documents")
     if KEYWORD_ONLY_RETRIEVAL:
-        st.caption("Temporary fast mode: deterministic keyword retrieval, no generation.")
+        st.caption("Fast ranking mode: deterministic keyword retrieval; generation follows the OpenRouter toggle.")
 
     query = st.text_area(
         "Research query",

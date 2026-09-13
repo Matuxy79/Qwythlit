@@ -26,10 +26,27 @@ def request(path, *, api_key="", payload=None):
     return result
 
 
+def model_catalog():
+    """Text-output models with display names and context windows, in catalog order."""
+    items = []
+    seen = set()
+    for item in request("/models").get("data", []):
+        model_id = item.get("id")
+        if not isinstance(model_id, str) or model_id in seen:
+            continue
+        if "text" not in item.get("architecture", {}).get("output_modalities", ["text"]):
+            continue
+        seen.add(model_id)
+        items.append({
+            "id": model_id,
+            "name": item.get("name") or model_id,
+            "context_length": item.get("context_length") or 0,
+        })
+    return items
+
+
 def model_ids():
-    return sorted({item["id"] for item in request("/models").get("data", [])
-                   if isinstance(item.get("id"), str)
-                   and "text" in item.get("architecture", {}).get("output_modalities", ["text"])})
+    return sorted(item["id"] for item in model_catalog())
 
 
 def chat(messages, *, api_key, model, system=""):

@@ -96,10 +96,10 @@ load_env
 pick_python
 ensure_venv
 ensure_requirements
-if [ "${JLS_RETRIEVAL_ONLY:-1}" = "0" ] || [ "${JLS_RETRIEVAL_ONLY:-1}" = "false" ]; then
-    say "Carrier synthesis/cleanup use JLS_DLLM_API_URL when configured."
-else
+if [ "${JLS_RETRIEVAL_ONLY:-0}" = "1" ] || [ "${JLS_RETRIEVAL_ONLY:-0}" = "true" ]; then
     say "Retrieval-only mode active. LLM synthesis/cleanup are disabled."
+else
+    say "Generation is on by default; the Streamlit OpenRouter toggle governs AI answers."
 fi
 if [ "${JLS_KEYWORD_ONLY:-1}" = "0" ] || [ "${JLS_KEYWORD_ONLY:-1}" = "false" ]; then
     say "Hybrid semantic+keyword retrieval active."

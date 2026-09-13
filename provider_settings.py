@@ -86,13 +86,14 @@ def render_provider_settings(scopes=None):
     state.setdefault("provider_mode", "Auto" if baseline["model"] == "openrouter/auto" else "Custom")
     state.setdefault("provider_custom", "" if baseline["model"] == "openrouter/auto" else baseline["model"])
     state.setdefault("provider_enabled", baseline["enabled"])
+    state.setdefault("provider_catalog", baseline["model"] or "openrouter/auto")
     state.setdefault("provider_scopes", list(state.get("lane_scopes", [])))
     # Keep drafts when a rerun occurs before a widget or while its section is hidden.
-    for name in ("provider_mode", "provider_custom", "provider_enabled", "provider_scopes"):
+    for name in ("provider_mode", "provider_custom", "provider_enabled", "provider_catalog", "provider_scopes"):
         state[name] = state[name]
 
     def reset():
-        for key in ("provider_key", "provider_mode", "provider_custom", "provider_enabled", "provider_scopes"):
+        for key in ("provider_key", "provider_mode", "provider_custom", "provider_enabled", "provider_catalog", "provider_scopes"):
             state.pop(key, None)
 
     def clear_key():
@@ -130,18 +131,71 @@ def render_provider_settings(scopes=None):
             st.error(tested["error"])
         st.markdown("[Create a key ↗](https://openrouter.ai/settings/keys)")
         st.divider()
-        st.markdown('<div class="provider-label">MODEL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="provider-label">MODEL SELECTION</div>', unsafe_allow_html=True)
+        st.caption("Choose a model or use auto-routing.")
         mode = st.segmented_control("Model mode", ["Auto", "Custom"], key="provider_mode", selection_mode="single", required=True, label_visibility="collapsed")
+
+        if "openrouter_catalog" not in state:
+            try:
+                state.openrouter_catalog = openrouter_client.model_catalog()
+            except RuntimeError as exc:
+                state.openrouter_catalog = []
+                state.provider_catalog_note = str(exc)
+        catalog = state.get("openrouter_catalog") or []
+        meta = {item["id"]: item for item in catalog}
+        options = ["openrouter/auto"] + [item["id"] for item in catalog]
+        current = baseline["model"]
+        if current not in options:
+            options.append(current)
+
+        def model_label(model_id):
+            entry = meta.get(model_id)
+            if model_id == "openrouter/auto":
+                return "openrouter/auto · auto-routing"
+            if not entry:
+                return model_id
+            ctx = entry.get("context_length") or 0
+            suffix = f" · {ctx // 1000}k ctx" if ctx else ""
+            return f"{entry.get('name', model_id)} · {model_id}{suffix}"
+
+        def choose_model():
+            picked = state.provider_catalog
+            if picked in (None, "", "openrouter/auto"):
+                state.provider_mode = "Auto"
+            else:
+                state.provider_mode = "Custom"
+                state.provider_custom = picked
+
+        def refresh_catalog():
+            try:
+                state.openrouter_catalog = openrouter_client.model_catalog()
+                state.provider_catalog_note = f"Loaded {len(state.openrouter_catalog)} models."
+            except RuntimeError as exc:
+                state.openrouter_catalog = []
+                state.provider_catalog_note = str(exc)
+
+        default_choice = state.get("provider_catalog") or current or "openrouter/auto"
+        if default_choice not in options:
+            options.append(default_choice)
+        pick, refresh = st.columns([5, 1])
+        with pick:
+            st.selectbox(
+                "Model catalog", options,
+                index=options.index(default_choice),
+                format_func=model_label, key="provider_catalog", on_change=choose_model,
+                label_visibility="collapsed",
+            )
+        with refresh:
+            st.button("⟳", key="provider_refresh", help="Refresh the live OpenRouter model catalog",
+                      on_click=refresh_catalog, use_container_width=True)
+        note = state.pop("provider_catalog_note", None)
+        if note:
+            st.caption(note)
         if mode == "Custom":
             st.text_input("Custom model ID", key="provider_custom", placeholder="provider/model")
-            models = state.get("openrouter_models", [])
-            if models:
-                def choose_model():
-                    if state.provider_catalog:
-                        state.provider_custom = state.provider_catalog
-                st.selectbox("Model catalog", models, index=None, key="provider_catalog", on_change=choose_model, placeholder="Search models…")
         model = "openrouter/auto" if mode == "Auto" else state.provider_custom.strip()
-        st.caption(f"Resolves → {model or 'Enter a model ID'}")
+        st.caption("Automatically routes to the best model for your prompt, cost, and latency."
+                   if mode == "Auto" else f"Resolves → {model or 'Enter a model ID'}")
 
         if scopes is not None:
             st.divider()
@@ -153,14 +207,8 @@ def render_provider_settings(scopes=None):
 
         st.divider()
         enabled = st.checkbox("Generate via OpenRouter", key="provider_enabled")
-        st.caption("Off = retrieval-only")
+        st.caption("On by default · Off = retrieval-only, source-grounded results.")
         with st.expander("Quick actions"):
-            if st.button("Refresh models", use_container_width=True):
-                try:
-                    state.openrouter_models = openrouter_client.model_ids()
-                    st.success(f"Loaded {len(state.openrouter_models)} models. Choose Custom to browse.")
-                except RuntimeError as exc:
-                    st.error(str(exc))
             st.button("Clear API key", disabled=not (api_key or saved.get("api_key")), on_click=clear_key, use_container_width=True)
             st.markdown("[View models ↗](https://openrouter.ai/models)")
 

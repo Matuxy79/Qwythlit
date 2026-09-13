@@ -6,7 +6,7 @@ each other:
 
     1. UI/UX            — app.py (Streamlit)
     2. RAG+CAG backend  — THIS module (Retrieval Encoder + CAG + Evidence Store -> instant text)
-    3. Carrier cleanup  — cls_backend/dllm.py (sparse, guarded)
+    3. Carrier cleanup  — jls_backend/dllm.py (sparse, guarded)
     4. Wiring/contract  — `instant_answer(...)` is the contract the UI consumes
 
 The backend does no LLM work by default: it encodes, checks the CAG cache, searches the

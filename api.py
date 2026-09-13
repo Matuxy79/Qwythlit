@@ -2,7 +2,7 @@
 
 This API is only active when the environment variable ``JS_USE_API=1`` is set.
 By default the Streamlit UI (``app.py``) and the Chainlit Ask Lane (``chat_lane.py``)
-import ``cls_service`` directly; no HTTP hop is needed for local single-machine use.
+import ``jls_service`` directly; no HTTP hop is needed for local single-machine use.
 
 Route groups:
 
@@ -62,7 +62,6 @@ from jls_service import (
 )
 
 JLS_RAG_MODEL = "jls-rag-cag-v1.0"
-CLS_RAG_MODEL = JLS_RAG_MODEL
 
 
 @asynccontextmanager

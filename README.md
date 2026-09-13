@@ -12,7 +12,7 @@ Choose **All beamlines** to bypass the metadata filter and search the full index
 
 ## Architecture
 
-DocuSearch-inspired: retrieval is instant and primary. The grounded extractive answer from the RAG/CAG layer is always shown first. Optional generative carrier synthesis (default: OpenRouter · `openai/gpt-oss-120b`) is currently blocked by retrieval-only mode.
+DocuSearch-inspired: retrieval is instant and primary. The grounded extractive answer from the RAG/CAG layer is always shown first. Generative carrier synthesis (default: OpenRouter · `openai/gpt-oss-120b`) runs by default once an OpenRouter key is configured; the sidebar **Generate via OpenRouter** toggle (or `JLS_RETRIEVAL_ONLY=1`) switches back to retrieval-only.
 
 | # | Component | File |
 | --- | --- | --- |
@@ -38,18 +38,18 @@ Both UIs share the same underlying retrieval backend.
 
 Creates `.venv` if needed, installs packages, and opens the UI at `http://localhost:8501`. AI answers use OpenRouter.
 
-Fast mode defaults:
+Defaults:
 
 ```bash
-export JLS_RETRIEVAL_ONLY=1
-export JLS_KEYWORD_ONLY=1
+export JLS_KEYWORD_ONLY=1        # deterministic keyword ranking (fast mode)
+# export JLS_RETRIEVAL_ONLY=1    # opt in to hard retrieval-only for headless paths
 ```
 
 ### OpenRouter setup
 
-In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key and choose **Auto** or **Custom**, then click **Save**. Changes remain drafts until saved; **Reset** restores the saved configuration. **Test** checks the entered key before saving; the connection pill reflects the last successful test for that key. **Quick actions > Refresh models** loads the live text catalog for Custom mode. **Clear API key** removes the session credentials. Ask Lane retrieval filters are saved with the configuration; no filters searches all disciplines.
+In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key, then pick a model from the searchable catalog (or keep **Auto** routing), and click **Save**. Changes remain drafts until saved; **Reset** restores the saved configuration. **Test** checks the entered key before saving; the connection pill reflects the last successful test for that key. The model catalog loads automatically beside the Auto/Custom switch; **⟳** re-fetches it and picking an entry switches to Custom with that model ID. **Clear API key** removes the session credentials. Ask Lane retrieval filters are saved with the configuration; no filters searches all disciplines.
 
-Credentials stay in the current Streamlit session and are never written to disk or process environment variables. The selected model is used for AI answers in both Streamlit views, including when retrieval uses the separate API bridge. These explicit session settings replace the old retrieval-only generation switch for the Streamlit UI. Without an enabled key, retrieval still works. The separate backend API retains its environment configuration.
+Credentials stay in the current Streamlit session and are never written to disk or process environment variables. The selected model is used for AI answers in both Streamlit views, including when retrieval uses the separate API bridge. The **Generate via OpenRouter** toggle is on by default and is the only retrieval-only switch in the Streamlit UI: Off = retrieval-only. Without an enabled key, retrieval still works. Headless paths (FastAPI proxy, Chainlit lane) additionally honour `JLS_RETRIEVAL_ONLY=1` as a hard kill switch.
 
 ## API + Dual Frontend
 
@@ -89,7 +89,7 @@ Key endpoints:
 ```text
 GET  /health
 POST /v1/query
-POST /v1/chat/completions   # cls-rag-cag-v1.0; JLS_DLLM_MODEL only when retrieval-only is off
+POST /v1/chat/completions   # jls-rag-cag-v1.0; JLS_DLLM_MODEL only when retrieval-only is off
 GET  /v1/dllm/status
 POST /v1/dllm/chat
 ```
@@ -108,7 +108,7 @@ curl http://127.0.0.1:8010/v1/query \
 - **Main page upload panel**: drag-and-drop batch upload of PDF, TXT, MD, DOCX, HTML, CSV, TSV, and JSON with beamline tagging.
 - **`ingest_daemon.py`**: optional batch indexer for folder-watch experiments.
 
-> **Upgrading from v1.1 to 1.5** The encoder changed to 384d MiniLM, so collections were renamed `cls_v2_*`. Open **Workspace**, hit **Reset Chroma index**, and re-index once.
+> **Upgrading from v1.1 to 1.5** The encoder changed to 384d MiniLM, so collections were renamed `jls_v2_*`. Open **Workspace**, hit **Reset Chroma index**, and re-index once.
 
 ## Prototype HUD
 

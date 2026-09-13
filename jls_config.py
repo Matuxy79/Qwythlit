@@ -7,7 +7,10 @@ launching; the launch scripts source that file automatically.
 
 Key environment variables
 -------------------------
-JLS_RETRIEVAL_ONLY       1 = disable the generative carrier entirely (default: 1)
+JLS_RETRIEVAL_ONLY       1 = hard-disable the generative carrier entirely
+                         (default: 0 — generation is on; the Streamlit
+                         "Generate via OpenRouter" toggle is the only
+                         retrieval-only switch for the UIs)
 JLS_KEYWORD_ONLY         1 = skip vector search, use lexical term overlap only (default: 1)
 JLS_DLLM_API_KEY         API key for the generative carrier (OpenRouter)
 JLS_DLLM_API_URL         Base URL for the carrier (default: https://openrouter.ai/api/v1)
@@ -37,7 +40,7 @@ from pathlib import Path
 
 
 def _env_get(suffix: str, default: str = "") -> str:
-    for prefix in ("JLS_", "JS_", "CLS_"):
+    for prefix in ("JLS_", "JS_"):
         val = os.getenv(prefix + suffix)
         if val is not None:
             return val
@@ -45,7 +48,7 @@ def _env_get(suffix: str, default: str = "") -> str:
 
 
 def _env_flag(suffix: str, default: bool = False) -> bool:
-    for prefix in ("JLS_", "JS_", "CLS_"):
+    for prefix in ("JLS_", "JS_"):
         val = os.getenv(prefix + suffix)
         if val is not None:
             return val.strip().lower() in {"1", "true", "yes", "on"}
@@ -162,9 +165,10 @@ for _scope_name, _scope_filter in _load_custom_scopes().items():
 
 DEFAULT_API_URL = _env_get("API_URL", "http://127.0.0.1:8010")
 
-# Temporary speed-first mode: keep inference on deterministic retrieval only.
-# Set JLS_RETRIEVAL_ONLY=0 to restore carrier synthesis/cleanup/proxy calls.
-RETRIEVAL_ONLY = _env_flag("RETRIEVAL_ONLY", default=True)
+# Generation is on by default: the Streamlit "Generate via OpenRouter" toggle is
+# the only retrieval-only switch for the UIs. Set JLS_RETRIEVAL_ONLY=1 to
+# hard-disable carrier synthesis/cleanup/proxy calls in headless paths too.
+RETRIEVAL_ONLY = _env_flag("RETRIEVAL_ONLY", default=False)
 
 # Temporary keyword-first mode: skip semantic embedding/CAG cache lookup on queries and
 # rank directly by lexical term overlap. Set JLS_KEYWORD_ONLY=0 to restore hybrid

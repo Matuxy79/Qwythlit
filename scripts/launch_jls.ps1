@@ -218,10 +218,10 @@ $Python = Pick-Python
 Ensure-Venv $Python
 Ensure-Requirements
 
-if (Test-FlagOff "JLS_RETRIEVAL_ONLY") {
-    Say "Carrier synthesis/cleanup use JLS_DLLM_API_URL when configured."
-} else {
+if ((Get-Flag "JLS_RETRIEVAL_ONLY" "0").Trim().ToLowerInvariant() -in @("1", "true")) {
     Say "Retrieval-only mode active. LLM synthesis/cleanup are disabled."
+} else {
+    Say "Generation is on by default; the Streamlit OpenRouter toggle governs AI answers."
 }
 
 if (Test-FlagOff "JLS_KEYWORD_ONLY") {

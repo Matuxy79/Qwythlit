@@ -7,8 +7,8 @@ Single-pass answer design:
   Formatted markdown bullets with match badge (exact / close / loose / cached)
   and source chips attached.  This is always the source of truth.
 
-The retrieval / CAG / embedder engine is reused unchanged from cls_service and
-cls_backend — this file is only the Chainlit view.
+The retrieval / CAG / embedder engine is reused unchanged from jls_service and
+jls_backend — this file is only the Chainlit view.
 """
 
 from __future__ import annotations

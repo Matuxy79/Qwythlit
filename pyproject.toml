@@ -61,12 +61,12 @@ dependencies = [
 "Bug Tracker"           = "https://github.com/Matuxy79/The-ChromaDB/issues"
 
 # ---------------------------------------------------------------------------
-# Package discovery — jls_backend/ and cls_backend/ (shim) are real importable packages;
+# Package discovery — jls_backend/ is the only real importable package;
 # everything else (app.py, api.py, …) is top-level application scripts.
 # ---------------------------------------------------------------------------
 [tool.setuptools.packages.find]
 where   = ["."]
-include = ["jls_backend*", "cls_backend*"]
+include = ["jls_backend*"]
 
 # ---------------------------------------------------------------------------
 # Test configuration
