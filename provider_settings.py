@@ -13,7 +13,7 @@ CSS = """
   --panel:#171d36; --ink:#eef0ff; --line:#39365f;
   padding: 18px; border: 1px solid #263456; border-radius: 18px;
   background: linear-gradient(145deg, #10152d, #080f1b 65%);
-  color: #f4f3ff; max-height: calc(100dvh - 150px); overflow-y:auto;
+  color: #f4f3ff; max-height: calc(100dvh - 250px); overflow-y:auto;
 }
 section[data-testid="stSidebar"]:has(.st-key-provider_panel) { width:360px !important; min-width:0 !important; }
 section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSidebarUserContent"] { padding:16px !important; }
@@ -30,10 +30,11 @@ section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSid
 .st-key-provider_panel [data-testid="stTextInput"] input,
 .st-key-provider_panel [data-testid="stTextInput"] [data-baseweb],
 .st-key-provider_panel [data-testid="stTextInputRootElement"] { color: #f4f3ff !important; background:#10192c !important; border-color:#334268 !important; }
-.st-key-provider_panel button[data-testid], .st-key-provider_panel button[data-testid]:hover {
+.st-key-provider_panel button, .st-key-provider_panel button[data-testid], .st-key-provider_panel button[data-testid]:hover {
   background: #171d36 !important; color: #eef0ff !important; border: 1px solid #39365f !important;
   border-radius: 10px; font-size: .82rem;
 }
+.st-key-provider_panel button[aria-checked="true"],
 .st-key-provider_panel button[kind="primary"],
 .st-key-provider_panel button[data-testid="stBaseButton-primary"],
 .st-key-provider_panel button[data-testid="stBaseButton-segmented_controlActive"],
@@ -50,6 +51,7 @@ section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSid
 .st-key-provider_panel a { color:#a398ff !important; }
 .st-key-provider_panel [data-testid="stCheckbox"] label > span { background:#7558ed !important; }
 @media(max-width:600px) {
+  .stApp:has(.st-key-provider_panel) button[data-testid="stExpandSidebarButton"],
   .stApp:has(.st-key-provider_panel) button[data-testid="stBaseButton-headerNoPadding"],
   .stApp:has(.st-key-provider_panel) [data-testid="stSidebarCollapsedControl"] { display:flex !important; }
 }
@@ -61,7 +63,16 @@ section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSid
 .st-key-provider_panel hr { margin: .4rem 0; border-color:#263456; }
 .st-key-provider_panel [data-testid="stExpander"] details { background:#10192c !important; border-color:#334268; }
 .st-key-provider_actions { position:sticky; bottom:-18px; background:#0c1324; padding:12px 0 18px; border-top:1px solid #263456; z-index:2; }
-@media(max-width:600px) { .st-key-provider_panel { padding:12px; } }
+.st-key-provider_panel div:has(> .st-key-provider_actions) { position:sticky; bottom:0; z-index:3; background:#0c1324; }
+.st-key-provider_actions [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; }
+.st-key-provider_actions [data-testid="stColumn"] { min-width:0 !important; flex:1 !important; }
+@media(max-width:600px) {
+  .st-key-provider_panel { padding:12px 12px 110px; box-sizing:border-box; }
+  section[data-testid="stSidebar"] .st-key-provider_actions {
+    position:fixed; bottom:0; left:0; width:100%; box-sizing:border-box; padding:12px 24px 20px;
+  }
+  section[data-testid="stSidebar"][aria-expanded="false"] .st-key-provider_actions { display:none; }
+}
 </style>
 """
 
