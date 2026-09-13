@@ -47,16 +47,33 @@ class OpenRouterTests(unittest.TestCase):
                                   "\n\n".join(functions) + "\nrender_openrouter_setup()")
         app.run()
         app.text_input[0].set_value("session-key")
-        app.button[0].click().run()
+        app.run()
+        next(button for button in app.button if button.label == "Save").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.session_state["openrouter_settings"]["api_key"], "session-key")
         app.checkbox[0].uncheck()
-        app.button[0].click().run()
+        app.run()
+        next(button for button in app.button if button.label == "Save").click().run()
         self.assertFalse(app.session_state["openrouter_settings"]["enabled"])
         next(button for button in app.button if button.label == "Clear API key").click().run()
         self.assertFalse(app.exception)
         self.assertEqual(app.text_input[0].value, "")
         self.assertNotIn("openrouter_settings", app.session_state)
+
+    def test_drafts_reset_and_key_test_identity(self):
+        from streamlit.testing.v1 import AppTest
+        app = AppTest.from_string("from provider_settings import render_provider_settings\nrender_provider_settings({'All': None, 'Maths': {}})").run()
+        app.text_input[0].set_value("test-key").run()
+        self.assertNotIn("openrouter_settings", app.session_state)
+        with patch.object(client, "request", return_value={"data": {}}):
+            next(b for b in app.button if b.label == "Test").click().run()
+        self.assertTrue(app.session_state["provider_test"]["ok"])
+        next(b for b in app.button if b.label == "Save").click().run()
+        app.text_input[0].set_value("different-key").run()
+        self.assertIn("Not connected", " ".join(m.value for m in app.markdown))
+        next(b for b in app.button if b.label == "Reset").click().run()
+        self.assertEqual(app.text_input[0].value, "test-key")
+        self.assertFalse(app.exception)
 
 
 if __name__ == "__main__":

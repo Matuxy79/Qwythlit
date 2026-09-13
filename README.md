@@ -47,7 +47,7 @@ export JLS_KEYWORD_ONLY=1
 
 ### OpenRouter setup
 
-In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key, choose a model, and click **Save settings**. **Refresh models** loads the live text model catalog; choose **Enter model ID?** to supply an ID manually. **Test key** validates your saved key without generating an answer. **Clear API key** removes the saved session credentials.
+In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key and choose **Auto** or **Custom**, then click **Save**. Changes remain drafts until saved; **Reset** restores the saved configuration. **Test** checks the entered key before saving; the connection pill reflects the last successful test for that key. **Quick actions > Refresh models** loads the live text catalog for Custom mode. **Clear API key** removes the session credentials. Ask Lane retrieval filters are saved with the configuration; no filters searches all disciplines.
 
 Credentials stay in the current Streamlit session and are never written to disk or process environment variables. The selected model is used for AI answers in both Streamlit views, including when retrieval uses the separate API bridge. These explicit session settings replace the old retrieval-only generation switch for the Streamlit UI. Without an enabled key, retrieval still works. The separate backend API retains its environment configuration.
 

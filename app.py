@@ -240,53 +240,8 @@ def dllm_api_status() -> dict:
 
 
 def render_openrouter_setup() -> None:
-    st.subheader("OpenRouter")
-    settings = _openrouter_settings()
-    with st.form("openrouter_setup"):
-        api_key = st.text_input("OpenRouter API key", type="password",
-                                value=settings.get("api_key", ""),
-                                help="Kept only in this browser session; never saved to disk.")
-        models = st.session_state.get("openrouter_models", [])
-        current = settings.get("model", "openrouter/auto")
-        choices = list(dict.fromkeys([current, *models, "Enter model ID?"]))
-        selected = st.selectbox("Model", choices)
-        custom = st.text_input("Custom model ID", placeholder="provider/model")
-        enabled = st.checkbox("Use OpenRouter for answers", value=settings.get("enabled", True))
-        saved = st.form_submit_button("Save settings")
-    if saved:
-        model = custom.strip() if selected == "Enter model ID?" else selected
-        if enabled and (not api_key.strip() or not model or "/" not in model):
-            st.error("Enter your API key and a model ID in provider/model format.")
-        else:
-            st.session_state["openrouter_settings"] = {
-                "api_key": api_key.strip(), "model": model, "enabled": enabled,
-            }
-            st.session_state.pop("last_synth", None)
-            st.session_state.pop("last_dllm", None)
-            st.rerun()
-    left, right = st.columns(2)
-    if left.button("Refresh models"):
-        try:
-            st.session_state["openrouter_models"] = openrouter_client.model_ids()
-            st.rerun()
-        except RuntimeError as exc:
-            st.error(str(exc))
-    if right.button("Test key", disabled=not settings.get("api_key")):
-        try:
-            openrouter_client.request("/key", api_key=settings["api_key"])
-            st.success("API key verified. Model availability and credits are checked when answering.")
-        except RuntimeError as exc:
-            st.error(str(exc))
-    if st.button("Clear API key", disabled=not settings.get("api_key")):
-        st.session_state.pop("openrouter_settings", None)
-        st.session_state.pop("last_synth", None)
-        st.session_state.pop("last_dllm", None)
-        st.rerun()
-    st.markdown("[Create an OpenRouter API key](https://openrouter.ai/settings/keys)")
-    if dllm_api_status()["online"]:
-        st.caption(f"Answers use {settings['model']} via OpenRouter.")
-    else:
-        st.caption("Add a key and enable OpenRouter to generate answers from your retrieved evidence.")
+    from provider_settings import render_provider_settings
+    render_provider_settings()
 
 
 def generate_answer(query, rows, *, model=None, grounded=True):
@@ -942,15 +897,8 @@ def _render_ask_lane() -> None:
             st.session_state.pop("ui_mode", None)
             st.rerun()
         st.divider()
-        st.header("Research Scope")
-        st.caption("Filter retrieval to one or more disciplines.")
-        selected_scopes = st.multiselect(
-            "Active scopes",
-            list(RESEARCH_SCOPES.keys()),
-            default=[],
-            key="lane_scopes",
-            label_visibility="collapsed",
-        )
+        from provider_settings import render_provider_settings
+        selected_scopes = render_provider_settings(RESEARCH_SCOPES)
         if not selected_scopes:
             selected_scopes = ["All"]
         effective_scopes = selected_scopes
@@ -960,8 +908,6 @@ def _render_ask_lane() -> None:
         scope_filters = [(s, RESEARCH_SCOPES[s]) for s in effective_scopes]
         single_scope = len(scope_filters) == 1
         active_mfilter = scope_filters[0][1] if single_scope else None
-        st.divider()
-        render_openrouter_setup()
         st.divider()
         if st.button("🧹 Clear chat", use_container_width=True):
             st.session_state["lane_messages"] = []
@@ -1008,7 +954,7 @@ def _render_ask_lane() -> None:
                 for prev in messages[:-1]:
                     _render_turn(prev, dllm_online)
 
-    prompt = st.chat_input("Ask the knowledge layer...")
+    prompt = st.chat_input("Ask qwythlit…")
     if prompt and prompt.strip():
         query = prompt.strip()
         with st.spinner("02 · Retrieving graph + chunks from synchrotron knowledge layer…"):
