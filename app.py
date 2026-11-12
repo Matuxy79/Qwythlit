@@ -86,9 +86,19 @@ from jls_backend.spectrum import (
 )
 from jls_backend.query_repair import repair_query
 from qwythlit_pane import (
+    LANE_SUGGESTIONS,
     QWYTHLIT_PANE_CSS,
-    render_qwythlit_header_card,
+    composer_rail_html,
+    composer_status_html,
+    render_lane_heading,
     render_qwythlit_media_background,
+)
+from provider_settings import (
+    key_status,
+    model_chip_label,
+    model_options,
+    remember_model,
+    render_key_panel,
 )
 
 
@@ -746,56 +756,26 @@ def _evidence_bullets_html(sentences: list[str]) -> str:
     return f'<ul class="lane-evidence">{items}</ul>' if items else ""
 
 
-def _render_turn(message: dict, dllm_online: bool) -> None:
-    """Render one stored chat turn: user question + assistant answer with chips."""
-    with st.chat_message("user", avatar="🧑‍🔬"):
-        st.markdown(message["query"])
-    with st.chat_message("assistant", avatar="🔬"):
-        scope_results = message.get("scope_results")
-        if scope_results:
-            for scope, result in scope_results.items():
-                _render_scope_summary(scope, result, dllm_online=dllm_online)
-            return
-        chips = _source_chips(message.get("rows", []))
-        if chips:
-            st.markdown(chips, unsafe_allow_html=True)
-        answer = message.get("answer", [])
-        if answer:
-            # Pass 1 — grounded extractive bullets. Provenance lives in the chips above.
-            # Escaped HTML, not markdown: raw evidence may start with "# " etc.
-            st.markdown(_evidence_bullets_html(answer), unsafe_allow_html=True)
-        # Pass 2 — stored LLM augmentation (present when DLLM was online and RAG couldn't fully answer).
-        augmentation = message.get("augmentation")
-        aug_label = message.get("augmentation_label", "💬 AI augmentation · grounded synthesis")
-        if augmentation:
-            st.divider()
-            st.caption(aug_label)
-            st.markdown(augmentation)
-        elif not answer:
-            st.markdown("_Nothing relevant found — try rephrasing._")
-
-
-def _render_scope_summary(scope: str, result: dict | None, *, dllm_online: bool) -> None:
-    """Compact per-beamline answer card for multi-scope Ask Lane queries."""
-    with st.container(border=True):
-        st.markdown(
-            f'<strong>{html.escape(scope)}</strong>',
-            unsafe_allow_html=True,
-        )
-        if not result or not result.get("rows"):
-            st.caption("_Nothing relevant found — try rephrasing._")
-            return
-        chips = _source_chips(result["rows"])
-        if chips:
-            st.markdown(chips, unsafe_allow_html=True)
-        if result.get("answer"):
-            st.markdown(_evidence_bullets_html(result["answer"]), unsafe_allow_html=True)
-        else:
-            tier = _fallback_tier(result)
-            if tier == "weak":
-                st.caption("_Weak corpus match — no direct passage found._")
-            else:
-                st.caption("_Nothing relevant found — try rephrasing._")
+def _render_turn(message: dict) -> None:
+    """One stored turn in the lane column: the question, then the cited answer, flush left."""
+    st.markdown(f'<p class="lane-query">{html.escape(message["query"])}</p>', unsafe_allow_html=True)
+    chips = _source_chips(message.get("rows", []))
+    if chips:
+        st.markdown(chips, unsafe_allow_html=True)
+    answer = message.get("answer", [])
+    if answer:
+        # Grounded extractive bullets. Provenance lives in the chips above.
+        # Escaped HTML, not markdown: raw evidence may start with "# " etc.
+        st.markdown(_evidence_bullets_html(answer), unsafe_allow_html=True)
+    # Stored LLM augmentation: present when OpenRouter was online and retrieval could not fully answer.
+    augmentation = message.get("augmentation")
+    aug_label = message.get("augmentation_label", "💬 AI augmentation · grounded synthesis")
+    if augmentation:
+        st.divider()
+        st.caption(aug_label)
+        st.markdown(augmentation)
+    elif not answer:
+        st.markdown("_Nothing relevant found — try rephrasing._")
 
 
 def _render_floating_q_launcher(current_mode: str) -> None:
@@ -874,7 +854,7 @@ def _render_floating_q_launcher(current_mode: str) -> None:
         </style>
         """.replace(
             "__QWYTHLIT_LAUNCHER_BOTTOM__",
-            "120px" if current_mode == "ask_lane" else "24px",
+            "24px",
         ),
         unsafe_allow_html=True,
     )
@@ -885,12 +865,122 @@ def _render_floating_q_launcher(current_mode: str) -> None:
         st.rerun()
 
 
+def _fill_lane_draft(prompt: str) -> None:
+    """Suggested-prompt callback: put the prompt in the composer. It does not send."""
+    st.session_state["lane_draft"] = prompt
+
+
+def _run_lane_query(query: str, messages: list[dict], dllm_online: bool, rail, status, key_state: str) -> None:
+    """Retrieve, optionally augment, and store one Ask Lane turn.
+
+    ``rail`` and ``status`` are placeholders inside the composer. They light the
+    pipeline one stage at a time while the query runs, then the rerun resets them.
+    """
+    def show(stage: int, text: str) -> None:
+        rail.markdown(composer_rail_html(stage), unsafe_allow_html=True)
+        status.markdown(composer_status_html(text, key_state), unsafe_allow_html=True)
+
+    remember_model(st.session_state.get("lane_model") or "openrouter/auto")
+    mfilter = RESEARCH_SCOPES.get(st.session_state.get("lane_scope", "All"))
+
+    show(1, "Parsing…")
+    show(2, "Retrieving…")
+    try:
+        result = query_backend(query, 16, True, 0.80, metadata_filter=mfilter)
+    except RuntimeError as exc:
+        show(0, "Ready")
+        st.error(str(exc))
+        return
+
+    augmentation = None
+    aug_label = None
+    if dllm_online:
+        tier = _fallback_tier(result)
+        if tier == "grounded":
+            aug_label = "💬 AI augmentation · grounded synthesis"
+            aug_grounded = True
+        elif tier == "weak":
+            aug_label = "💬 AI augmentation · partial context"
+            aug_grounded = True
+        else:
+            aug_label = "💬 General knowledge answer · not from corpus"
+            aug_grounded = False
+        show(3, "Weaving…")
+        try:
+            augmentation = "".join(
+                stream_generate_answer(query, result["rows"], model=DLLM_MODEL, grounded=aug_grounded)
+            )
+        except Exception as exc:
+            augmentation = f"_Augmentation unavailable: {exc}_"
+
+    turn = {"query": query, "rows": result["rows"], "answer": result["answer"]}
+    if augmentation:
+        turn["augmentation"] = augmentation
+        turn["augmentation_label"] = aug_label
+    messages.append(turn)
+    st.session_state["lane_rows"] = result["rows"]
+    st.session_state["lane_from_cache"] = result["from_cache"]
+    st.session_state["lane_clear_draft"] = True
+    st.rerun()
+
+
+def _render_lane_composer(messages: list[dict], dllm_online: bool) -> None:
+    """The composer: one bordered form holding the rail, the question, the corpus and
+    model chips, the one key status, and send. Chip choices apply when the question is sent."""
+    if st.session_state.pop("lane_clear_draft", False):
+        st.session_state["lane_draft"] = ""
+    settings = _openrouter_settings()
+    st.session_state.setdefault("lane_scope", "All")
+    st.session_state.setdefault("lane_model", settings.get("model") or "openrouter/auto")
+    key_state = key_status(settings, st.session_state.get("provider_test", {}))
+
+    with st.form("lane_composer", border=True):
+        rail = st.empty()
+        rail.markdown(composer_rail_html(0), unsafe_allow_html=True)
+        st.text_area(
+            "Question",
+            key="lane_draft",
+            placeholder="Ask about the canon, a doc, or a decision",
+            label_visibility="collapsed",
+            height=84,
+            max_chars=2000,
+        )
+        c_scope, c_model, c_status, c_send = st.columns([1.8, 1.4, 2.0, 0.6], vertical_alignment="center")
+        with c_scope:
+            st.selectbox(
+                "Corpus",
+                list(RESEARCH_SCOPES),
+                key="lane_scope",
+                format_func=lambda scope: "Canon corpus" if scope == "All" else scope,
+                label_visibility="collapsed",
+            )
+        with c_model:
+            st.selectbox(
+                "Model",
+                model_options(st.session_state["lane_model"]),
+                key="lane_model",
+                format_func=model_chip_label,
+                accept_new_options=True,
+                label_visibility="collapsed",
+            )
+        status = c_status.empty()
+        status.markdown(composer_status_html("Ready", key_state), unsafe_allow_html=True)
+        with c_send:
+            submitted = st.form_submit_button("↑", type="primary")
+
+    st.markdown('<p class="q-hint">Ctrl+Enter to send · Enter for a new line</p>', unsafe_allow_html=True)
+    if submitted:
+        query = st.session_state.get("lane_draft", "").strip()
+        if query:
+            _run_lane_query(query, messages, dllm_online, rail, status, key_state)
+        else:
+            status.markdown(composer_status_html("Type a question first", key_state), unsafe_allow_html=True)
+
+
 def _render_ask_lane() -> None:
-    """Cinematic Qwythlit animated Ask Lane over instant RAG/CAG extraction."""
+    """Ask Lane: one 600px column. Heading, suggested prompts or the latest answer, then the composer."""
     dllm_online = dllm_api_status().get("online", False)
 
-    # Inject cinematic Qwythlit styling: cosmic dark canvas, paired wyvern familiar,
-    # synchrotron spectral beam pulse, and glassmorphism cards.
     st.markdown(QWYTHLIT_PANE_CSS, unsafe_allow_html=True)
     st.markdown(render_qwythlit_media_background("ask_lane"), unsafe_allow_html=True)
 
@@ -899,17 +989,7 @@ def _render_ask_lane() -> None:
             st.session_state.pop("ui_mode", None)
             st.rerun()
         st.divider()
-        from provider_settings import render_provider_settings
-        selected_scopes = render_provider_settings(RESEARCH_SCOPES)
-        if not selected_scopes:
-            selected_scopes = ["All"]
-        effective_scopes = selected_scopes
-        if "All" in effective_scopes and len(effective_scopes) > 1:
-            effective_scopes = [s for s in effective_scopes if s != "All"]
-            st.caption("ℹ All covers every lane; querying the selected scopes instead.")
-        scope_filters = [(s, RESEARCH_SCOPES[s]) for s in effective_scopes]
-        single_scope = len(scope_filters) == 1
-        active_mfilter = scope_filters[0][1] if single_scope else None
+        render_key_panel()
         st.divider()
         if st.button("🧹 Clear chat", use_container_width=True):
             st.session_state["lane_messages"] = []
@@ -917,112 +997,20 @@ def _render_ask_lane() -> None:
 
     messages: list[dict] = st.session_state.setdefault("lane_messages", [])
 
+    st.markdown(render_lane_heading(), unsafe_allow_html=True)
     if not messages:
-        st.markdown(
-            render_qwythlit_header_card(
-                status="READY",
-                status_active=False,
-                stage_idx=0,
-            ),
-            unsafe_allow_html=True,
-        )
+        with st.container(key="lane_suggest"):
+            for index, prompt in enumerate(LANE_SUGGESTIONS):
+                st.button(prompt, key=f"lane_suggest_{index}", on_click=_fill_lane_draft, args=(prompt,))
     else:
-        latest = messages[-1]
-        latest_query = latest.get("query", "")
-        latest_answer = latest.get("answer", [])
-        latest_rows = latest.get("rows", [])
-        latest_chips = _source_chips(latest_rows) if latest_rows else ""
-        augmentation = latest.get("augmentation")
-
-        st.markdown(
-            render_qwythlit_header_card(
-                status="READY",
-                status_active=False,
-                stage_idx=3,
-                latest_query=latest_query,
-                latest_answer=latest_answer,
-                latest_chips=latest_chips,
-                augmentation=augmentation,
-            ),
-            unsafe_allow_html=True,
-        )
-
-        if latest.get("scope_results"):
-            for scope, res in latest["scope_results"].items():
-                _render_scope_summary(scope, res, dllm_online=dllm_online)
-
         if len(messages) > 1:
             with st.expander(f"📜 Earlier conversation ({len(messages) - 1} turns)", expanded=False):
                 for prev in messages[:-1]:
-                    _render_turn(prev, dllm_online)
+                    _render_turn(prev)
+        _render_turn(messages[-1])
 
-    prompt = st.chat_input("Ask qwythlit…")
-    if prompt and prompt.strip():
-        query = prompt.strip()
-        with st.spinner("02 · Retrieving graph + chunks from synchrotron knowledge layer…"):
-            if single_scope:
-                result = None
-                augmentation = None
-                aug_label = None
-                try:
-                    result = query_backend(query, 16, True, 0.80, metadata_filter=active_mfilter)
-                except RuntimeError as exc:
-                    st.error(str(exc))
-
-                if result is not None:
-                    tier = _fallback_tier(result)
-                    if dllm_online:
-                        if tier == "grounded":
-                            aug_label = "💬 AI augmentation · grounded synthesis"
-                            aug_grounded = True
-                        elif tier == "weak":
-                            aug_label = "💬 AI augmentation · partial context"
-                            aug_grounded = True
-                        else:
-                            aug_label = "💬 General knowledge answer · not from corpus"
-                            aug_grounded = False
-
-                        try:
-                            aug_chunks = []
-                            for chunk in stream_generate_answer(
-                                query, result["rows"], model=DLLM_MODEL, grounded=aug_grounded
-                            ):
-                                aug_chunks.append(chunk)
-                            augmentation = "".join(aug_chunks)
-                        except Exception as exc:
-                            augmentation = f"_Augmentation unavailable: {exc}_"
-
-                if result is not None:
-                    turn = {
-                        "query": query,
-                        "rows": result["rows"],
-                        "answer": result["answer"],
-                    }
-                    if augmentation:
-                        turn["augmentation"] = augmentation
-                        if aug_label:
-                            turn["augmentation_label"] = aug_label
-                    messages.append(turn)
-                    st.session_state["lane_rows"] = result["rows"]
-                    st.session_state["lane_from_cache"] = result["from_cache"]
-                    st.rerun()
-            else:
-                scope_results = {}
-                for scope, mfilter in scope_filters:
-                    try:
-                        res = query_backend(query, 16, True, 0.80, metadata_filter=mfilter)
-                    except RuntimeError as exc:
-                        res = None
-                    scope_results[scope] = res
-                turn = {"query": query, "scope_results": scope_results}
-                messages.append(turn)
-                first_rows = next((r["rows"] for r in scope_results.values() if r and r.get("rows")), [])
-                st.session_state["lane_rows"] = first_rows
-                st.session_state["lane_from_cache"] = any(r.get("from_cache") for r in scope_results.values() if r)
-                st.rerun()
-
+    _render_lane_composer(messages, dllm_online)
     _render_floating_q_launcher("ask_lane")
-
 
 
 def _home_gate() -> None:

@@ -26,7 +26,7 @@ DocuSearch-inspired: retrieval is instant and primary. The grounded extractive a
 The landing page offers two entry points:
 
 - **Full App** — Admin / User roles, corpus admin, upload, precision controls, graded eval, optional LLM synthesis.
-- **Ask Lane** — cinematic Qwythlit animated knowledge layer for instant retrieval: a full-bleed dragon video background with a still-image and reduced-motion fallback, paired western wyvern familiar, dynamic synchrotron energy pulse, 3-stage lifecycle (`01 · Parse`, `02 · Retrieve`, `03 · Weave`), grounded evidence bullets with source chips, and a persistent floating `Qq` launcher widget.
+- **Ask Lane** — a single 600px column for instant, cited answers: heading, three suggested prompts (clicking one fills the composer), and the composer. The composer's top rail is the pipeline (`Parse` · `Retrieve` · `Weave`) and lights up while a query runs. Its chips pick the corpus and the model, and one key status (`Key missing`, `Key set`, `Key verified`, `Key failed`, `Generation off`) sits beside send. The full-bleed video background and the floating `Qq` launcher remain.
 
 Both UIs share the same underlying retrieval backend.
 
@@ -47,7 +47,9 @@ export JLS_KEYWORD_ONLY=1        # deterministic keyword ranking (fast mode)
 
 ### OpenRouter setup
 
-In the Streamlit Ask Lane sidebar (or Full App admin tools), enter your OpenRouter API key, then pick a model from the searchable catalog (or keep **Auto** routing), and click **Save**. Changes remain drafts until saved; **Reset** restores the saved configuration. **Test** checks the entered key before saving; the connection pill reflects the last successful test for that key. The model catalog loads automatically beside the Auto/Custom switch; **⟳** re-fetches it and picking an entry switches to Custom with that model ID. **Clear API key** removes the session credentials. Ask Lane retrieval filters are saved with the configuration; no filters searches all disciplines.
+**Ask Lane:** enter your OpenRouter API key in the sidebar and click **Save**. Changes remain drafts until saved; **Reset** restores the saved configuration. **Test** checks the entered key before saving. The composer's **Model** chip picks from the searchable catalog (**Auto** routes automatically) and is remembered for the session; the **Corpus** chip picks the document collection to search. Both chips apply to the next question you send. **Clear API key** removes the session credentials.
+
+**Full App:** the sidebar keeps its own model picker, retrieval filters, and connection pill, as before. The model catalog loads automatically beside the Auto/Custom switch, and **⟳** re-fetches it.
 
 Credentials stay in the current Streamlit session and are never written to disk or process environment variables. The selected model is used for AI answers in both Streamlit views, including when retrieval uses the separate API bridge. The **Generate via OpenRouter** toggle is on by default and is the only retrieval-only switch in the Streamlit UI: Off = retrieval-only. Without an enabled key, retrieval still works. Headless paths (FastAPI proxy, Chainlit lane) additionally honour `JLS_RETRIEVAL_ONLY=1` as a hard kill switch.
 

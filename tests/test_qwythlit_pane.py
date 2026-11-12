@@ -1,4 +1,4 @@
-"""Tests for Qwythlit animated pane module."""
+"""Tests for the Qwythlit Ask Lane pane module."""
 
 from __future__ import annotations
 
@@ -6,12 +6,15 @@ import unittest
 from pathlib import Path
 
 from qwythlit_pane import (
-    _DRAGON_B64,
-    _PARTICLES,
-    QWYTHLIT_POSTER_URL,
+    KEY_STATUS,
+    LANE_STAGES,
+    LANE_SUGGESTIONS,
     QWYTHLIT_PANE_CSS,
+    QWYTHLIT_POSTER_URL,
     QWYTHLIT_VIDEO_URL,
-    render_qwythlit_header_card,
+    composer_rail_html,
+    composer_status_html,
+    render_lane_heading,
     render_qwythlit_media_background,
 )
 
@@ -32,50 +35,60 @@ class TestQwythlitPane(unittest.TestCase):
         with self.assertRaises(ValueError):
             render_qwythlit_media_background("unsupported")
 
-    def test_css_tokens(self):
+    def test_css_defines_single_column_lane_and_composer(self):
         self.assertIn("--q-bg", QWYTHLIT_PANE_CSS)
-        self.assertIn("qwythlit-card", QWYTHLIT_PANE_CSS)
-        self.assertIn("qwythlit-beam-pulse", QWYTHLIT_PANE_CSS)
-        self.assertIn("q-launcher-btn", QWYTHLIT_PANE_CSS)
+        self.assertIn("max-width: 600px", QWYTHLIT_PANE_CSS)
+        self.assertIn(".st-key-lane_suggest", QWYTHLIT_PANE_CSS)
+        self.assertIn('div[data-testid="stForm"]:has(.q-rail)', QWYTHLIT_PANE_CSS)
+        self.assertIn(".q-seg.is-lit", QWYTHLIT_PANE_CSS)
 
-    def test_particles_defined(self):
-        self.assertGreaterEqual(len(_PARTICLES), 10)
-        for p in _PARTICLES:
-            self.assertIn("top", p)
-            self.assertIn("left", p)
-            self.assertIn("color", p)
+    def test_heading_has_no_placeholder_copy(self):
+        heading = render_lane_heading()
+        self.assertIn("Ask the knowledge layer", heading)
+        for leftover in ("Ready to query", "beamline", "instrumentation", "Stubbed", "Wire the events"):
+            self.assertNotIn(leftover, heading)
 
-    def test_dragon_asset_loaded(self):
-        self.assertTrue(len(_DRAGON_B64) > 1000, "Dragon image base64 should be populated")
+    def test_three_suggested_prompts(self):
+        self.assertEqual(len(LANE_SUGGESTIONS), 3)
+        self.assertEqual(len(set(LANE_SUGGESTIONS)), 3)
 
-    def test_render_empty_card(self):
-        html = render_qwythlit_header_card(status="READY", status_active=False, stage_idx=0)
-        self.assertNotIn("\n", html)
-        self.assertEqual(html.count('class="qwythlit-dragon-bg'), 2)
-        self.assertIn("is-left", html)
-        self.assertIn("is-right", html)
-        self.assertIn("Q W Y T H L I T", html)
-        self.assertIn("READY", html)
-        self.assertIn("01 · Parse", html)
-        self.assertIn("02 · Retrieve", html)
-        self.assertIn("03 · Weave", html)
-        self.assertIn("qwythlit-beam-pulse", html)
+    def test_rail_has_one_segment_per_stage_and_lights_progressively(self):
+        self.assertEqual(LANE_STAGES, ("Parse", "Retrieve", "Weave"))
+        for active, lit in ((0, 0), (1, 1), (2, 2), (3, 3)):
+            html = composer_rail_html(active)
+            self.assertEqual(html.count('class="q-seg'), len(LANE_STAGES))
+            self.assertEqual(html.count("is-lit"), lit)
 
-    def test_render_answered_card(self):
-        html = render_qwythlit_header_card(
-            status="READY",
-            status_active=False,
-            stage_idx=3,
-            latest_query="What is the beam energy?",
-            latest_answer=["The beam energy is 2.9 GeV [Source: spec.pdf]."],
-            latest_chips='<div class="qwythlit-chips"><span class="qwythlit-chip">spec</span></div>',
-            augmentation="AI summary: storage ring operates at 2.9 GeV.",
-        )
-        self.assertIn("What is the beam energy?", html)
-        self.assertIn("The beam energy is 2.9 GeV", html)
-        self.assertIn("spec", html)
-        self.assertIn("AI summary: storage ring operates at 2.9 GeV.", html)
-        self.assertIn("is-complete", html)
+    def test_rail_labels_the_current_stage(self):
+        self.assertIn("Pipeline idle", composer_rail_html(0))
+        self.assertIn("Pipeline: Parse", composer_rail_html(1))
+        self.assertIn("Pipeline: Retrieve", composer_rail_html(2))
+        self.assertIn("Pipeline: Weave", composer_rail_html(3))
+
+    def test_rail_clamps_out_of_range_stages(self):
+        self.assertEqual(composer_rail_html(9).count("is-lit"), len(LANE_STAGES))
+        self.assertEqual(composer_rail_html(-1).count("is-lit"), 0)
+
+    def test_status_row_shows_one_key_signal(self):
+        html = composer_status_html("Ready", "missing")
+        self.assertIn("Ready", html)
+        self.assertIn("Key missing", html)
+        self.assertIn("is-warn", html)
+        for state, (label, _tone) in KEY_STATUS.items():
+            self.assertIn(label, composer_status_html("Ready", state))
+
+    def test_status_text_is_escaped(self):
+        html = composer_status_html("<script>x</script>", "set")
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_markup_is_one_line_so_markdown_does_not_treat_it_as_code(self):
+        for html in (
+            render_lane_heading(),
+            composer_rail_html(2),
+            composer_status_html("Parsing…", "verified"),
+        ):
+            self.assertNotIn("\n", html)
 
 
 if __name__ == "__main__":

@@ -229,3 +229,129 @@ def render_provider_settings(scopes=None):
                     state.pop("last_dllm", None)
                     st.rerun()
     return state.get("lane_scopes", [])
+
+
+# --------------------------------------------------------------------------- #
+# Ask Lane: the sidebar keeps the key; the composer holds model and corpus.
+# --------------------------------------------------------------------------- #
+
+def _fingerprint(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def key_status(settings: dict, test: dict) -> str:
+    """The one key status the Ask Lane shows: missing, off, set, verified or failed."""
+    key = (settings or {}).get("api_key", "").strip()
+    if not key:
+        return "missing"
+    if not (settings or {}).get("enabled", True):
+        return "off"
+    if test and test.get("fingerprint") == _fingerprint(key):
+        return "verified" if test.get("ok") else "failed"
+    return "set"
+
+
+def load_catalog() -> list[dict]:
+    """Live OpenRouter model catalog, fetched once per session. Empty when unreachable."""
+    state = st.session_state
+    if "openrouter_catalog" not in state:
+        try:
+            state.openrouter_catalog = openrouter_client.model_catalog()
+        except RuntimeError:
+            state.openrouter_catalog = []
+    return state.openrouter_catalog or []
+
+
+def model_options(current: str) -> list[str]:
+    """Auto first, then every catalog model, always including the current choice."""
+    options = ["openrouter/auto"] + [item["id"] for item in load_catalog()]
+    if current and current not in options:
+        options.append(current)
+    return options
+
+
+def model_chip_label(model_id: str) -> str:
+    """Short label for the model chip: 'Auto', the catalog name, or the raw ID."""
+    if model_id == "openrouter/auto":
+        return "Auto"
+    meta = {item["id"]: item for item in st.session_state.get("openrouter_catalog") or []}
+    entry = meta.get(model_id)
+    return entry.get("name", model_id) if entry else model_id
+
+
+def remember_model(model_id: str) -> None:
+    """Keep the model picked in the composer as the session's model."""
+    saved = dict(st.session_state.get("openrouter_settings", {}))
+    if saved.get("model") == model_id:
+        return
+    st.session_state["openrouter_settings"] = {
+        "api_key": saved.get("api_key", ""),
+        "model": model_id,
+        "enabled": saved.get("enabled", True),
+    }
+
+
+def render_key_panel() -> None:
+    """Ask Lane sidebar: the OpenRouter key, the generation switch and Save/Reset.
+
+    The model and corpus chips live in the composer, and the key's status shows
+    there too, so this panel carries no status of its own.
+    """
+    state = st.session_state
+    saved = state.get("openrouter_settings", {})
+    baseline = {"api_key": "", "model": "openrouter/auto", "enabled": True, **saved}
+    state.setdefault("provider_key", baseline["api_key"])
+    state.setdefault("provider_enabled", baseline["enabled"])
+
+    def reset():
+        for name in ("provider_key", "provider_enabled"):
+            state.pop(name, None)
+
+    def clear_key():
+        for name in ("openrouter_settings", "provider_test", "last_synth", "last_dllm"):
+            state.pop(name, None)
+        reset()
+
+    st.markdown(CSS, unsafe_allow_html=True)
+    with st.container(key="provider_panel"):
+        st.markdown('<div class="provider-header"><strong>Qwythlit</strong></div>', unsafe_allow_html=True)
+        st.markdown('<div class="provider-label">PROVIDER KEY</div>', unsafe_allow_html=True)
+        api_key = st.text_input("OpenRouter API key", type="password", key="provider_key",
+                                placeholder="sk-or-v1-…", label_visibility="collapsed")
+        st.caption("Kept only in this Streamlit session.")
+        typed = api_key.strip()
+        if st.button("Test", disabled=not typed):
+            try:
+                openrouter_client.request("/key", api_key=typed)
+                state.provider_test = {"fingerprint": _fingerprint(typed), "ok": True}
+            except RuntimeError as exc:
+                state.provider_test = {"fingerprint": _fingerprint(typed), "ok": False, "error": str(exc)}
+            st.rerun()
+        tested = state.get("provider_test", {})
+        if typed and tested.get("fingerprint") == _fingerprint(typed) and tested.get("error"):
+            st.error(tested["error"])
+        st.markdown("[Create a key ↗](https://openrouter.ai/settings/keys)")
+        st.divider()
+        enabled = st.checkbox("Generate via OpenRouter", key="provider_enabled")
+        st.caption("On by default · Off = retrieval-only, source-grounded results.")
+        with st.expander("Quick actions"):
+            st.button("Clear API key", disabled=not (api_key or saved.get("api_key")),
+                      on_click=clear_key, use_container_width=True)
+            st.markdown("[View models ↗](https://openrouter.ai/models)")
+
+        draft = {"api_key": typed, "model": baseline["model"], "enabled": enabled}
+        dirty = draft != baseline
+        with st.container(key="provider_actions"):
+            st.caption("● Unsaved changes" if dirty
+                       else "✓ Settings saved" if saved.get("api_key")
+                       else "No configuration saved")
+            left, right = st.columns(2)
+            left.button("Reset", on_click=reset, disabled=not dirty, use_container_width=True)
+            if right.button("Save", type="primary", disabled=not dirty, use_container_width=True):
+                if enabled and not typed:
+                    st.error("Enter an API key to turn on OpenRouter generation.")
+                else:
+                    state.openrouter_settings = draft
+                    state.pop("last_synth", None)
+                    state.pop("last_dllm", None)
+                    st.rerun()

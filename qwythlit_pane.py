@@ -1,29 +1,39 @@
-"""Qwythlit animated pane — cinematic micro-stub for the Ask Lane.
+"""Qwythlit Ask Lane: styling and markup for the single-column knowledge layer.
 
-Renders paired western wyverns, a dynamic synchrotron beam pulse, lifecycle
-state indicators (01 · Parse, 02 · Retrieve, 03 · Weave), and the Ask Lane card.
+The lane is one 600px column: brand line, heading, suggested prompts, the
+composer and the latest answer. The composer's top rail is the retrieval
+pipeline (Parse, Retrieve, Weave). Its segments light up while a query runs and
+stay grey otherwise. The Streamlit widgets live in app.py; this module supplies
+their markup and CSS, plus the animated media background.
 """
 
 from __future__ import annotations
 
-import base64
 import html
-import os
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parent
 QWYTHLIT_POSTER_URL = "/app/static/qwyth.png"
 QWYTHLIT_VIDEO_URL = "/app/static/qwythlit-intro.mp4?v=starless-1"
-_DRAGON_PATH = APP_ROOT / "animator" / "qwythlit-dragon-stub" / "public" / "qwythlit-dragon.jpg"
-if not _DRAGON_PATH.exists():
-    _DRAGON_PATH = APP_ROOT / "animator" / "GreatGreenTransformer.jpg"
 
-_DRAGON_B64 = ""
-if _DRAGON_PATH.exists():
-    try:
-        _DRAGON_B64 = base64.b64encode(_DRAGON_PATH.read_bytes()).decode("ascii")
-    except Exception:
-        _DRAGON_B64 = ""
+# Pipeline stages, in order. The composer rail has one segment per stage.
+LANE_STAGES = ("Parse", "Retrieve", "Weave")
+
+# Empty-state prompts. Clicking one fills the composer; it does not send.
+LANE_SUGGESTIONS = (
+    "How does the Fano lattice route domains?",
+    "Summarize the SSM symmetry doc",
+    "What changed in the canon this week?",
+)
+
+# The one key status shown in the composer: label and tone class.
+KEY_STATUS = {
+    "missing": ("Key missing", "warn"),
+    "set": ("Key set", "ok"),
+    "verified": ("Key verified", "ok"),
+    "failed": ("Key failed", "bad"),
+    "off": ("Generation off", "muted"),
+}
 
 
 def render_qwythlit_media_background(context: str = "home") -> str:
@@ -88,22 +98,21 @@ def render_qwythlit_media_background(context: str = "home") -> str:
 </div>
 """.strip()
 
+
 QWYTHLIT_PANE_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --q-bg: #060814;
-    --q-card-bg: rgba(11, 14, 38, 0.88);
-    --q-card-border: rgba(255, 255, 255, 0.12);
-    --q-ink: #f7f7ff;
-    --q-muted: #8c93ad;
-    --q-faint: #59617d;
+    --q-bg: #0b0f10;
+    --q-panel: rgba(14, 18, 20, 0.86);
+    --q-line: rgba(255, 255, 255, 0.12);
+    --q-ink: #f4f7f6;
+    --q-muted: #9aa6a3;
+    --q-faint: #66726f;
     --q-cyan: #62d3bc;
-    --q-magenta: #78a69b;
-    --q-amber: #d8c9a2;
-    --q-orange: #9b7653;
-    --q-indigo: #557184;
+    --q-amber: #f0b429;
+    --q-red: #f07178;
 }
 
 html, body, #root {
@@ -115,15 +124,11 @@ html, body, #root {
 .stApp,
 div[data-testid="stAppViewContainer"],
 section[data-testid="stMain"] {
-    background:
-        radial-gradient(circle at 72% 30%, rgba(85, 113, 132, 0.18), transparent 38rem),
-        radial-gradient(circle at 18% 75%, rgba(98, 211, 188, 0.09), transparent 34rem),
-        radial-gradient(circle at 50% 10%, rgba(155, 118, 83, 0.06), transparent 28rem),
-        var(--q-bg) !important;
+    background: var(--q-bg) !important;
     color: var(--q-ink) !important;
 }
 
-/* Sidebar — deep dark glassmorphism */
+/* Sidebar */
 section[data-testid="stSidebar"] {
     background: rgba(10, 13, 34, 0.95) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -135,32 +140,23 @@ section[data-testid="stSidebar"] * {
 section[data-testid="stSidebar"] hr {
     border-color: rgba(255, 255, 255, 0.08) !important;
 }
-
-/* BaseWeb Controls in Sidebar */
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
 section[data-testid="stSidebar"] div[data-baseweb="base-input"] {
     background: rgba(18, 22, 54, 0.8) !important;
     border-color: rgba(255, 255, 255, 0.12) !important;
     border-radius: 12px !important;
 }
-section[data-testid="stSidebar"] div[data-baseweb="select"] input {
-    color: #ffffff !important;
-    background: transparent !important;
-}
-section[data-testid="stSidebar"] div[data-baseweb="tag"] {
-    background: rgba(85, 113, 132, 0.25) !important;
-    border: 1px solid rgba(98, 211, 188, 0.42) !important;
-    color: #d2e6e1 !important;
-    border-radius: 999px !important;
-}
 
-/* Popover dropdown */
+/* Dropdown menus (composer chips open these) */
+div[data-baseweb="popover"]:has(ul[role="listbox"]) {
+    min-width: 260px !important;
+}
 div[data-baseweb="popover"] div[data-baseweb="menu"],
 ul[role="listbox"] {
-    background: #0d102b !important;
+    background: #0d1214 !important;
     border: 1px solid rgba(255, 255, 255, 0.14) !important;
     border-radius: 12px !important;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.6) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
 }
 li[role="option"] {
     color: #e2e8f0 !important;
@@ -168,564 +164,299 @@ li[role="option"] {
 }
 li[role="option"]:hover,
 li[role="option"][aria-selected="true"] {
-    background: rgba(122, 92, 255, 0.3) !important;
+    background: rgba(98, 211, 188, 0.2) !important;
     color: #ffffff !important;
 }
 
-/* Hero */
-.qwythlit-hero {
-    max-width: 680px;
-    margin: 1.2rem auto 2.2rem;
-    text-align: left;
-    padding: 0 0.5rem;
-}
-.qwythlit-hero h1 {
-    font-family: 'Outfit', 'Inter', sans-serif !important;
-    font-size: clamp(2.4rem, 4.8vw, 3.8rem) !important;
-    font-weight: 800 !important;
-    line-height: 1.05 !important;
-    letter-spacing: -0.04em !important;
-    color: #ffffff !important;
-    margin: 0 0 1rem !important;
-}
-.qwythlit-hero p {
-    font-size: 1.05rem !important;
-    color: var(--q-muted) !important;
-    line-height: 1.65 !important;
-    margin: 0 !important;
-    max-width: 580px;
+/* One column, 600px, left edge shared by heading, prompts and composer */
+div[data-testid="stMainBlockContainer"] {
+    max-width: 600px !important;
+    padding: 2.6rem 16px 5rem !important;
 }
 
-/* The Qwythlit Card */
-.qwythlit-card {
-    max-width: 680px;
-    margin: 0 auto 2.5rem;
-    background: var(--q-card-bg);
-    border: 1px solid var(--q-card-border);
-    border-radius: 28px;
-    padding: 2rem 2.2rem 2rem;
-    box-shadow:
-        0 24px 70px rgba(0, 0, 0, 0.75),
-        0 0 60px rgba(64, 169, 148, 0.14);
-    backdrop-filter: blur(28px);
-    position: relative;
-    overflow: hidden;
-}
-
-/* Card Topbar */
-.qwythlit-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.6rem;
-}
-.qwythlit-brand {
+.q-brand {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.6rem;
+    margin: 0 0 1.4rem;
 }
-.qwythlit-mark-badge {
-    width: 22px;
-    height: 22px;
+.q-mark {
+    width: 20px;
+    height: 20px;
     border-radius: 6px;
     background: linear-gradient(135deg, #285e59, #72b7a7 52%, #557184);
-    display: inline-block;
-    box-shadow: 0 0 12px rgba(0, 244, 210, 0.5);
+    box-shadow: 0 0 12px rgba(0, 244, 210, 0.45);
 }
-.qwythlit-brand-title {
+.q-wordmark {
     font-family: 'Outfit', sans-serif;
-    font-size: 0.84rem;
-    font-weight: 800;
-    letter-spacing: 0.16em;
-    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--q-muted);
 }
-.qwythlit-status {
+.q-heading h1 {
+    font-family: 'Outfit', 'Inter', sans-serif !important;
+    font-size: clamp(1.9rem, 4vw, 2.4rem) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+    color: #ffffff !important;
+    margin: 0 0 0.5rem !important;
+}
+.q-heading p {
+    font-size: 1rem !important;
+    color: var(--q-muted) !important;
+    line-height: 1.5 !important;
+    margin: 0 0 1.5rem !important;
+}
+
+/* Suggested prompts: pills that fill the composer */
+.st-key-lane_suggest {
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+}
+.st-key-lane_suggest button {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--q-line) !important;
+    border-radius: 999px !important;
+    color: var(--q-ink) !important;
+    font-size: 0.92rem !important;
+    padding: 0.5rem 1.1rem !important;
+}
+.st-key-lane_suggest button:hover {
+    border-color: rgba(98, 211, 188, 0.6) !important;
+    color: #ffffff !important;
+}
+.st-key-lane_suggest button:hover p {
+    color: #ffffff !important;
+}
+.st-key-lane_suggest button p {
+    color: var(--q-ink) !important;
+}
+/* Streamlit paints a focused or pressed button white; keep the pill dark after a click. */
+.st-key-lane_suggest button:focus,
+.st-key-lane_suggest button:active {
+    background: rgba(98, 211, 188, 0.12) !important;
+    border-color: rgba(98, 211, 188, 0.6) !important;
+    color: #ffffff !important;
+}
+.st-key-lane_suggest button:focus p,
+.st-key-lane_suggest button:active p {
+    color: #ffffff !important;
+}
+
+/* Composer: one bordered form holding rail, question, settings chips and send */
+div[data-testid="stForm"]:has(.q-rail) {
+    position: relative !important;
+    background: var(--q-panel) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(18px);
+    overflow: hidden;
+    padding: 1.1rem 1rem 0.8rem !important;
+}
+.q-rail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    display: flex;
+    gap: 2px;
+    pointer-events: none;
+}
+.q-seg {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.1);
+    transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.q-seg.is-lit {
+    background: linear-gradient(90deg, #285e59, #62d3bc);
+    box-shadow: 0 0 12px rgba(98, 211, 188, 0.55);
+}
+
+div[data-testid="stForm"]:has(.q-rail) div[data-baseweb="textarea"],
+div[data-testid="stForm"]:has(.q-rail) div[data-baseweb="base-input"] {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+}
+div[data-testid="stForm"]:has(.q-rail) textarea,
+div[data-testid="stForm"]:has(.q-rail) textarea:focus {
+    resize: none !important;
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: var(--q-ink) !important;
+    font-size: 1.02rem !important;
+    line-height: 1.5 !important;
+    caret-color: var(--q-cyan) !important;
+    padding: 0.2rem 0 !important;
+}
+div[data-testid="stForm"]:has(.q-rail) textarea::placeholder {
+    color: var(--q-faint) !important;
+}
+
+/* Settings chips: small dropdowns for corpus and model */
+div[data-testid="stForm"]:has(.q-rail) div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    min-height: 32px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid var(--q-line) !important;
+    border-radius: 999px !important;
+}
+div[data-testid="stForm"]:has(.q-rail) div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
+    font-size: 0.84rem !important;
+    color: var(--q-ink) !important;
+}
+
+/* Single status row: pipeline state, then the key dot */
+.q-status-row {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    font-size: 0.76rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    justify-content: flex-end;
+    gap: 0.7rem;
+    min-height: 32px;
+    font-size: 0.8rem;
+    color: var(--q-muted);
+    white-space: nowrap;
 }
-.qwythlit-status-dot {
+.q-pipeline {
+    margin-right: auto;
+}
+.q-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+.q-key i {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--q-cyan);
-    box-shadow: 0 0 10px var(--q-cyan);
-    animation: qDotPulse 2s ease-in-out infinite;
+    display: inline-block;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
 }
-.qwythlit-status-text {
-    color: var(--q-cyan);
+.q-key.is-warn { color: var(--q-amber); }
+.q-key.is-ok { color: var(--q-cyan); }
+.q-key.is-bad { color: var(--q-red); }
+.q-key.is-muted { color: var(--q-faint); }
+
+/* Send button */
+div[data-testid="stForm"]:has(.q-rail) button[kind="primaryFormSubmit"],
+div[data-testid="stForm"]:has(.q-rail) button[data-testid="stBaseButton-primaryFormSubmit"] {
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, #285e59, #72b7a7 55%, #557184) !important;
+    color: #06201d !important;
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 18px rgba(0, 244, 210, 0.35) !important;
 }
 
-@keyframes qDotPulse {
-    0%, 100% { opacity: 0.7; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.3); }
-}
-
-/* Animated Visual Area */
-.qwythlit-visual {
-    position: relative;
-    height: 190px;
-    margin: 0.5rem 0 1.6rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 20px;
-    background: radial-gradient(ellipse at center, rgba(30, 25, 75, 0.45) 0%, transparent 75%);
-}
-
-.qwythlit-halo {
-    position: absolute;
-    width: 220px;
-    height: 220px;
-    border-radius: 50%;
-    background: conic-gradient(from 30deg, #285e59, #7fb7aa, #496b7c, #285e59);
-    filter: blur(55px);
-    opacity: 0.18;
-    animation: qHaloSpin 16s linear infinite;
-}
-@keyframes qHaloSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Mirrored western wyvern backdrop */
-.qwythlit-dragon-bg {
-    position: absolute;
-    top: 18px;
-    width: 215px;
-    height: 154px;
-    opacity: 0.24;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    filter: grayscale(1) sepia(0.3) hue-rotate(112deg) saturate(1.65) brightness(0.78) contrast(1.2) drop-shadow(0 0 18px rgba(64, 169, 148, 0.48));
-    mix-blend-mode: screen;
-    pointer-events: none;
-}
-.qwythlit-dragon-bg.is-left {
-    left: -20px;
-    animation: qDragonFloatLeft 6s ease-in-out infinite;
-}
-.qwythlit-dragon-bg.is-right {
-    right: -20px;
-    animation: qDragonFloatRight 6s -3s ease-in-out infinite;
-}
-@keyframes qDragonFloatLeft {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-6px) scale(1.03); }
-}
-@keyframes qDragonFloatRight {
-    0%, 100% { transform: translateY(0) scaleX(-1); }
-    50% { transform: translateY(-6px) scaleX(-1) scale(1.03); }
-}
-
-/* Ambient wyvern motes */
-.q-particle {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    animation: qParticleMotion var(--duration, 3.5s) var(--delay, 0s) ease-in-out infinite;
-}
-@keyframes qParticleMotion {
-    0%, 100% {
-        transform: translate(0, 0) scale(1);
-        opacity: var(--base-op, 0.35);
-    }
-    50% {
-        transform: translate(var(--dx, 10px), var(--dy, -12px)) scale(1.4);
-        opacity: 0.95;
-    }
-}
-
-/* Two-tone synchrotron energy beam */
-.qwythlit-beam-wrap {
-    position: relative;
-    width: 82%;
-    height: 14px;
-    z-index: 10;
-}
-.qwythlit-beam-glow {
-    position: absolute;
-    inset: -6px -4px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #285e59 0%, #72b7a7 42%, #e4efeb 50%, #557184 100%);
-    filter: blur(14px);
-    opacity: 0.72;
-    animation: qBeamBreathe 3s ease-in-out infinite alternate;
-}
-.qwythlit-beam-core {
-    position: relative;
-    width: 100%;
-    height: 14px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #234f4b 0%, #62d3bc 44%, #f1f6f4 50%, #456779 100%);
-    overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 244, 210, 0.5), 0 0 35px rgba(122, 92, 255, 0.4);
-}
-.qwythlit-beam-pulse {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.95) 50%, transparent 100%);
-    width: 40%;
-    transform: translateX(-100%);
-    animation: qBeamPulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-@keyframes qBeamPulse {
-    0% { transform: translateX(-120%); }
-    100% { transform: translateX(350%); }
-}
-@keyframes qBeamBreathe {
-    0% { opacity: 0.55; filter: blur(12px); transform: scaleY(0.9); }
-    100% { opacity: 0.95; filter: blur(20px); transform: scaleY(1.15); }
-}
-
-/* Title & Description */
-.qwythlit-heading h2 {
-    font-family: 'Outfit', 'Inter', sans-serif !important;
-    font-size: 1.55rem !important;
-    font-weight: 750 !important;
-    color: #ffffff !important;
-    margin: 0 0 0.35rem !important;
-    letter-spacing: -0.02em;
-}
-.qwythlit-heading p {
-    font-size: 0.88rem !important;
-    color: var(--q-muted) !important;
-    margin: 0 !important;
-    line-height: 1.5;
-}
-
-/* 3 Lifecycle Stage Cards */
-.qwythlit-stages {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin: 1.4rem 0 1.2rem;
-}
-.qwythlit-stage {
-    background: rgba(18, 22, 54, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 0.85rem 0.95rem;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    transition: all 0.3s ease;
-}
-.qwythlit-stage strong {
-    font-size: 0.86rem;
-    color: #f7f7ff;
-    letter-spacing: 0.02em;
-}
-.qwythlit-stage small {
-    font-size: 0.72rem;
+.q-hint {
+    font-size: 0.78rem;
     color: var(--q-muted);
-}
-.qwythlit-stage.is-active {
-    background: rgba(24, 30, 75, 0.95);
-    border-color: var(--q-cyan);
-    box-shadow: 0 0 20px rgba(0, 244, 210, 0.25);
-}
-.qwythlit-stage.is-active strong {
-    color: var(--q-cyan);
-}
-.qwythlit-stage.is-complete {
-    background: rgba(22, 27, 68, 0.85);
-    border-color: rgba(122, 92, 255, 0.5);
-    box-shadow: 0 0 15px rgba(122, 92, 255, 0.15);
-}
-.qwythlit-stage.is-complete strong {
-    color: #9d87ff;
+    margin: 0.6rem 0 0 0.25rem;
 }
 
-/* Response Container */
-.qwythlit-response {
-    background: rgba(14, 18, 46, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 1.15rem 1.3rem;
-    color: #e3e6f5;
-    font-size: 0.92rem;
-    line-height: 1.6;
-    margin-top: 1rem;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
-}
-.qwythlit-response-query {
-    color: var(--q-cyan);
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-.qwythlit-response-bullets {
-    margin: 0.4rem 0 0.4rem 1.2rem;
-    padding: 0;
-}
-.qwythlit-response-bullets li {
-    margin-bottom: 0.4rem;
-    color: #e2e8f5;
-}
-
-/* Source Chips */
-.qwythlit-chips {
+/* Answer: source chips and evidence bullets, dark theme */
+.lane-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 0.8rem;
+    margin: 0 0 0.7rem;
 }
-.qwythlit-chip {
+.lane-chip {
     font-size: 0.74rem;
     font-weight: 600;
-    padding: 4px 10px;
+    line-height: 1;
+    padding: 5px 10px;
     border-radius: 999px;
-    background: rgba(122, 92, 255, 0.18);
-    border: 1px solid rgba(122, 92, 255, 0.38);
-    color: #c9c1ff;
+    background: rgba(98, 211, 188, 0.1);
+    border: 1px solid rgba(98, 211, 188, 0.32);
+    color: #bfe9de;
     white-space: nowrap;
 }
-
-/* Chat Input Styling */
-div[data-testid="stChatInput"] {
-    background: rgba(14, 18, 44, 0.92) !important;
-    border: 1px solid rgba(255, 255, 255, 0.16) !important;
-    border-radius: 999px !important;
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.55) !important;
-    backdrop-filter: blur(20px) !important;
-    padding: 2px !important;
+.lane-evidence {
+    margin: 0.2rem 0 0.4rem 1.15rem;
+    padding: 0;
 }
-div[data-testid="stChatInput"]:focus-within {
-    border-color: rgba(0, 244, 210, 0.6) !important;
-    box-shadow: 0 0 30px rgba(0, 244, 210, 0.25) !important;
-}
-div[data-testid="stChatInput"] textarea {
-    color: #ffffff !important;
-    background: transparent !important;
-    caret-color: var(--q-cyan) !important;
+.lane-evidence li {
+    color: #e3ebe8 !important;
     font-size: 0.95rem !important;
-}
-div[data-testid="stChatInput"] textarea::placeholder {
-    color: var(--q-faint) !important;
-}
-button[data-testid="stChatInputSubmitButton"] {
-    border-radius: 50% !important;
-    background: linear-gradient(135deg, #285e59, #72b7a7 55%, #557184) !important;
-    border: 0 !important;
-    box-shadow: 0 0 18px rgba(0, 244, 210, 0.45) !important;
-    transition: transform 0.2s ease, filter 0.2s ease !important;
-}
-button[data-testid="stChatInputSubmitButton"]:hover {
-    transform: scale(1.08) !important;
-    filter: brightness(1.18) !important;
-}
-button[data-testid="stChatInputSubmitButton"] svg {
-    fill: #060814 !important;
-    color: #060814 !important;
+    font-weight: 400 !important;
+    line-height: 1.5;
+    margin: 0 0 0.4rem;
 }
 
-/* Floating 'Q' Launcher Widget Button */
-.q-launcher-wrap {
-    position: fixed;
-    bottom: 26px;
-    right: 26px;
-    z-index: 99999;
-}
-.q-launcher-btn {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 34% 24%, #ffffff, #e4efeb 58%, #cedadd);
-    border: 2px solid #4c8277;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 28px rgba(64, 169, 148, 0.4), 0 8px 24px rgba(0,0,0,0.45);
-    color: #285e59;
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.35rem;
-    font-weight: 850;
-    cursor: pointer;
-    text-decoration: none;
-    transition: transform 0.22s ease, box-shadow 0.22s ease;
-}
-.q-launcher-btn:hover {
-    transform: scale(1.08) translateY(-2px);
-    box-shadow: 0 0 40px rgba(64, 169, 148, 0.62), 0 12px 30px rgba(0,0,0,0.55);
+/* The question above its answer, flush left with the heading */
+.lane-query {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--q-ink);
+    margin: 0.4rem 0 0.7rem !important;
 }
 
-/* Native chat message cards in lane */
-div[data-testid="stChatMessage"] {
-    background: rgba(14, 18, 46, 0.78) !important;
-    border: 1px solid rgba(255, 255, 255, 0.09) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
-    margin-bottom: 0.8rem !important;
+@media (max-width: 700px) {
+    div[data-testid="stMainBlockContainer"] {
+        padding-top: 1.6rem !important;
+    }
+    .q-status-row {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+    .q-pipeline {
+        margin-right: 0;
+    }
 }
-div[data-testid="stChatMessage"] * {
-    color: #e3e6f5 !important;
-}
-
-/* Main content padding */
-section[data-testid="stMain"] .block-container,
-div[data-testid="stMainBlockContainer"] {
-    padding-bottom: 130px !important;
-    max-width: 900px !important;
-}
-
-div[data-testid="stBottom"] {
-    background: transparent !important;
-    border-top: 0 !important;
-}
-div[data-testid="stBottom"] > div {
-    background: transparent !important;
+@media (prefers-reduced-motion: reduce) {
+    .q-seg { transition: none; }
 }
 </style>
 """
 
-# Ambient particles in the wyvern palette with varied positions and motion
-_PARTICLES = [
-    {"top": 28, "left": 40, "size": 6, "color": "#62d3bc", "dx": "14px", "dy": "-18px", "dur": "3.2s", "delay": "0s", "op": 0.5},
-    {"top": 35, "left": 55, "size": 4, "color": "#d8c9a2", "dx": "-12px", "dy": "-15px", "dur": "2.8s", "delay": "-0.5s", "op": 0.45},
-    {"top": 24, "left": 70, "size": 8, "color": "#557184", "dx": "10px", "dy": "14px", "dur": "4.1s", "delay": "-1.2s", "op": 0.6},
-    {"top": 42, "left": 25, "size": 5, "color": "#78a69b", "dx": "-10px", "dy": "-12px", "dur": "3.5s", "delay": "-0.8s", "op": 0.4},
-    {"top": 68, "left": 35, "size": 7, "color": "#3f7f75", "dx": "12px", "dy": "-14px", "dur": "3.0s", "delay": "-1.5s", "op": 0.55},
-    {"top": 72, "left": 65, "size": 4, "color": "#62d3bc", "dx": "-15px", "dy": "10px", "dur": "3.8s", "delay": "-0.3s", "op": 0.45},
-    {"top": 30, "left": 80, "size": 5, "color": "#d8c9a2", "dx": "8px", "dy": "-16px", "dur": "2.9s", "delay": "-1.9s", "op": 0.5},
-    {"top": 62, "left": 82, "size": 6, "color": "#557184", "dx": "-14px", "dy": "-10px", "dur": "3.6s", "delay": "-0.7s", "op": 0.4},
-    {"top": 20, "left": 48, "size": 3, "color": "#ffffff", "dx": "6px", "dy": "12px", "dur": "2.5s", "delay": "-1.1s", "op": 0.65},
-    {"top": 75, "left": 50, "size": 5, "color": "#78a69b", "dx": "15px", "dy": "8px", "dur": "4.0s", "delay": "-2.1s", "op": 0.45},
-    {"top": 48, "left": 18, "size": 4, "color": "#d8c9a2", "dx": "-8px", "dy": "15px", "dur": "3.3s", "delay": "-1.4s", "op": 0.4},
-    {"top": 58, "left": 75, "size": 6, "color": "#62d3bc", "dx": "10px", "dy": "-12px", "dur": "3.1s", "delay": "-0.9s", "op": 0.5},
-    {"top": 32, "left": 30, "size": 7, "color": "#557184", "dx": "-12px", "dy": "14px", "dur": "3.7s", "delay": "-1.7s", "op": 0.5},
-    {"top": 65, "left": 22, "size": 3, "color": "#ffffff", "dx": "8px", "dy": "-10px", "dur": "2.7s", "delay": "-0.4s", "op": 0.6},
-    {"top": 26, "left": 62, "size": 5, "color": "#3f7f75", "dx": "-14px", "dy": "-8px", "dur": "3.4s", "delay": "-2.0s", "op": 0.45},
-    {"top": 78, "left": 72, "size": 6, "color": "#d8c9a2", "dx": "12px", "dy": "10px", "dur": "3.9s", "delay": "-1.3s", "op": 0.5},
-    {"top": 45, "left": 86, "size": 4, "color": "#62d3bc", "dx": "-10px", "dy": "12px", "dur": "3.0s", "delay": "-0.6s", "op": 0.4},
-]
 
-
-def render_qwythlit_header_card(
-    *,
-    status: str = "READY",
-    status_active: bool = False,
-    stage_idx: int = 0,
-    latest_query: str = "",
-    latest_answer: list[str] | None = None,
-    latest_chips: str = "",
-    augmentation: str | None = None,
-) -> str:
-    """Generate the HTML markup for the cinematic Qwythlit animated pane."""
-    particles_html = "".join(
-        f'<div class="q-particle" style="'
-        f'top:{p["top"]}%;left:{p["left"]}%;width:{p["size"]}px;height:{p["size"]}px;'
-        f'background:{p["color"]};box-shadow:0 0 {p["size"]*2.5}px {p["color"]};'
-        f'--dx:{p["dx"]};--dy:{p["dy"]};--duration:{p["dur"]};--delay:{p["delay"]};--base-op:{p["op"]};'
-        f'"></div>'
-        for p in _PARTICLES
+def render_lane_heading() -> str:
+    """Brand line, heading and subtitle. One block, left-aligned in the lane column."""
+    return (
+        '<div class="q-brand"><span class="q-mark"></span><span class="q-wordmark">qwythlit</span></div>'
+        '<div class="q-heading"><h1>Ask the knowledge layer</h1>'
+        '<p>Answers are grounded in your canon corpus, with sources.</p></div>'
     )
 
-    dragon_bg_html = ""
-    if _DRAGON_B64:
-        dragon_style = f"background-image:url(data:image/jpeg;base64,{_DRAGON_B64});"
-        dragon_bg_html = (
-            f'<div class="qwythlit-dragon-bg is-left" style="{dragon_style}"></div>'
-            f'<div class="qwythlit-dragon-bg is-right" style="{dragon_style}"></div>'
-        )
 
-    s1_class = "is-complete" if stage_idx > 1 else ("is-active" if stage_idx == 1 else "")
-    s2_class = "is-complete" if stage_idx > 2 else ("is-active" if stage_idx == 2 else "")
-    s3_class = "is-complete" if stage_idx >= 3 else ("is-active" if stage_idx == 3 else "")
+def composer_rail_html(active_stage: int = 0) -> str:
+    """The thin pipeline rail at the top of the composer.
 
-    status_dot_color = "var(--q-cyan)" if not status_active else "var(--q-amber)"
-    status_text = status.upper()
-
-    response_content = ""
-    if latest_answer or latest_query:
-        query_line = f'<div class="qwythlit-response-query">🔍 {html.escape(latest_query)}</div>' if latest_query else ""
-        chips_line = latest_chips if latest_chips else ""
-        bullets = ""
-        if latest_answer:
-            bullets = '<ul class="qwythlit-response-bullets">' + "".join(
-                f"<li>{html.escape(s.split(' [Source:')[0].strip())}</li>"
-                for s in latest_answer if s.strip()
-            ) + "</ul>"
-        aug_line = f'<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);color:#d1d5f0;"><em>{html.escape(augmentation)}</em></div>' if augmentation else ""
-        response_content = f"""
-        <div class="qwythlit-response">
-            {query_line}
-            {chips_line}
-            {bullets}
-            {aug_line}
-        </div>
-        """
-    else:
-        response_content = """
-        <div class="qwythlit-response" style="color:#7b84a6;text-align:center;padding:1.4rem 1rem;">
-            Ready to query the knowledge layer. Type any question about beamlines, instrumentation, or contacts below.
-        </div>
-        """
-
-    markup = f"""
-    <div class="qwythlit-shell">
-        <div class="qwythlit-hero">
-            <h1>Knowledge, retrieved with a pulse.</h1>
-            <p>A cinematic micro-stub for Qwythlit: paired wyvern familiar, retrieval state, and a compact launcher mounted over the existing app shell.</p>
-        </div>
-
-        <div class="qwythlit-card">
-            <div class="qwythlit-topbar">
-                <div class="qwythlit-brand">
-                    <span class="qwythlit-mark-badge"></span>
-                    <span class="qwythlit-brand-title">Q W Y T H L I T</span>
-                </div>
-                <div class="qwythlit-status">
-                    <span class="qwythlit-status-dot" style="background:{status_dot_color};box-shadow:0 0 10px {status_dot_color};"></span>
-                    <span class="qwythlit-status-text" style="color:{status_dot_color};">{status_text}</span>
-                </div>
-            </div>
-
-            <div class="qwythlit-visual">
-                <div class="qwythlit-halo"></div>
-                {dragon_bg_html}
-                {particles_html}
-                <div class="qwythlit-beam-wrap">
-                    <div class="qwythlit-beam-glow"></div>
-                    <div class="qwythlit-beam-core">
-                        <div class="qwythlit-beam-pulse"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="qwythlit-heading">
-                <h2>Ask the knowledge layer.</h2>
-                <p>Stubbed retrieval lifecycle. Wire the events below into the real RAG/CAG pipeline.</p>
-            </div>
-
-            <div class="qwythlit-stages">
-                <div class="qwythlit-stage {s1_class}">
-                    <strong>01 · Parse</strong>
-                    <small>intent + context</small>
-                </div>
-                <div class="qwythlit-stage {s2_class}">
-                    <strong>02 · Retrieve</strong>
-                    <small>graph + chunks</small>
-                </div>
-                <div class="qwythlit-stage {s3_class}">
-                    <strong>03 · Weave</strong>
-                    <small>grounded answer</small>
-                </div>
-            </div>
-
-            {response_content}
-        </div>
-    </div>
+    ``active_stage`` is 0 when idle (every segment grey). During a query it is
+    the number of stages reached so far, so 1 lights Parse, 2 lights Parse and
+    Retrieve, and 3 lights all three (Weave is running).
     """
-    return "".join(line.strip() for line in markup.splitlines())
+    count = max(0, min(int(active_stage), len(LANE_STAGES)))
+    segments = "".join(
+        f'<span class="q-seg{" is-lit" if index < count else ""}"></span>'
+        for index in range(len(LANE_STAGES))
+    )
+    label = "Pipeline idle" if count == 0 else f"Pipeline: {LANE_STAGES[count - 1]}"
+    return f'<div class="q-rail" role="img" aria-label="{html.escape(label)}">{segments}</div>'
+
+
+def composer_status_html(pipeline_text: str, key_state: str) -> str:
+    """The composer's one status row: pipeline state on the left, key status on the right."""
+    label, tone = KEY_STATUS.get(key_state, KEY_STATUS["missing"])
+    return (
+        '<div class="q-status-row">'
+        f'<span class="q-pipeline">{html.escape(pipeline_text)}</span>'
+        f'<span class="q-key is-{tone}"><i></i>{html.escape(label)}</span>'
+        '</div>'
+    )
