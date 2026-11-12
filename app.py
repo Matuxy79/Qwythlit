@@ -865,9 +865,15 @@ def _render_floating_q_launcher(current_mode: str) -> None:
         st.rerun()
 
 
+def _lane_draft_key() -> str:
+    """Key of the composer's question box. It changes after each send, so the box starts
+    empty and a value left in the form's widget state can never be submitted again."""
+    return f"lane_draft_{st.session_state.get('lane_draft_seq', 0)}"
+
+
 def _fill_lane_draft(prompt: str) -> None:
     """Suggested-prompt callback: put the prompt in the composer. It does not send."""
-    st.session_state["lane_draft"] = prompt
+    st.session_state[_lane_draft_key()] = prompt
 
 
 def _run_lane_query(query: str, messages: list[dict], dllm_online: bool, rail, status, key_state: str) -> None:
@@ -920,15 +926,14 @@ def _run_lane_query(query: str, messages: list[dict], dllm_online: bool, rail, s
     messages.append(turn)
     st.session_state["lane_rows"] = result["rows"]
     st.session_state["lane_from_cache"] = result["from_cache"]
-    st.session_state["lane_clear_draft"] = True
+    st.session_state["lane_draft_seq"] = st.session_state.get("lane_draft_seq", 0) + 1
     st.rerun()
 
 
 def _render_lane_composer(messages: list[dict], dllm_online: bool) -> None:
     """The composer: one bordered form holding the rail, the question, the corpus and
     model chips, the one key status, and send. Chip choices apply when the question is sent."""
-    if st.session_state.pop("lane_clear_draft", False):
-        st.session_state["lane_draft"] = ""
+    draft_key = _lane_draft_key()
     settings = _openrouter_settings()
     st.session_state.setdefault("lane_scope", "All")
     st.session_state.setdefault("lane_model", settings.get("model") or "openrouter/auto")
@@ -939,7 +944,7 @@ def _render_lane_composer(messages: list[dict], dllm_online: bool) -> None:
         rail.markdown(composer_rail_html(0), unsafe_allow_html=True)
         st.text_area(
             "Question",
-            key="lane_draft",
+            key=draft_key,
             placeholder="Ask about the canon, a doc, or a decision",
             label_visibility="collapsed",
             height=84,
@@ -970,11 +975,15 @@ def _render_lane_composer(messages: list[dict], dllm_online: bool) -> None:
 
     st.markdown('<p class="q-hint">Ctrl+Enter to send · Enter for a new line</p>', unsafe_allow_html=True)
     if submitted:
-        query = st.session_state.get("lane_draft", "").strip()
-        if query:
-            _run_lane_query(query, messages, dllm_online, rail, status, key_state)
+        query = st.session_state.get(draft_key, "").strip()
+        model_pick = st.session_state.get("lane_model") or "openrouter/auto"
+        if not query:
+            status.markdown(composer_status_html("Type a question", key_state), unsafe_allow_html=True)
+        elif "/" not in model_pick or any(c.isspace() for c in model_pick):
+            # Typed model entries must look like OpenRouter IDs (provider/model), as before.
+            status.markdown(composer_status_html("Check the model ID", key_state), unsafe_allow_html=True)
         else:
-            status.markdown(composer_status_html("Type a question first", key_state), unsafe_allow_html=True)
+            _run_lane_query(query, messages, dllm_online, rail, status, key_state)
 
 
 def _render_ask_lane() -> None:
@@ -1004,7 +1013,8 @@ def _render_ask_lane() -> None:
                 st.button(prompt, key=f"lane_suggest_{index}", on_click=_fill_lane_draft, args=(prompt,))
     else:
         if len(messages) > 1:
-            with st.expander(f"📜 Earlier conversation ({len(messages) - 1} turns)", expanded=False):
+            earlier = len(messages) - 1
+            with st.expander(f"📜 Earlier conversation ({earlier} turn{'s' if earlier != 1 else ''})", expanded=False):
                 for prev in messages[:-1]:
                     _render_turn(prev)
         _render_turn(messages[-1])

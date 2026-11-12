@@ -399,12 +399,28 @@ div[data-testid="stForm"]:has(.q-rail) button[data-testid="stBaseButton-primaryF
 }
 
 /* The question above its answer, flush left with the heading */
-.lane-query {
+.stApp div[data-testid="stMarkdownContainer"] p.lane-query {
     font-family: 'Outfit', 'Inter', sans-serif;
     font-size: 1.05rem;
     font-weight: 600;
-    color: var(--q-ink);
+    color: var(--q-ink) !important;
     margin: 0.4rem 0 0.7rem !important;
+}
+/* The app's global sheet paints markdown text dark (--ink), and the lane sits on a dark
+   video, so the lane's text colours are set with the .stApp prefix to win that cascade. */
+.stApp div[data-testid="stMarkdownContainer"] p,
+.stApp div[data-testid="stMarkdownContainer"] li,
+.stApp .lane-evidence li {
+    color: #e3ebe8 !important;
+}
+.stApp div[data-testid="stMarkdownContainer"] p.q-hint {
+    color: var(--q-muted) !important;
+}
+.stApp .q-heading h1 {
+    color: #ffffff !important;
+}
+.stApp div[data-testid="stMarkdownContainer"] .q-heading p {
+    color: var(--q-muted) !important;
 }
 
 @media (max-width: 700px) {
