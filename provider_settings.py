@@ -9,29 +9,28 @@ import openrouter_client
 CSS = """
 <style>
 .st-key-provider_panel {
-  --provider-muted: #a9b7dc;
-  --panel:#171d36; --ink:#eef0ff; --line:#39365f;
-  padding: 18px; border: 1px solid #263456; border-radius: 18px;
-  background: linear-gradient(145deg, #10152d, #080f1b 65%);
-  color: #f4f3ff; max-height: calc(100dvh - 250px); overflow-y:auto;
+  --provider-muted: #8b90a8;
+  padding: 2px 2px 0; border: 0; border-radius: 0;
+  background: transparent;
+  color: #E6E8F0; max-height: none; overflow: visible;
 }
 section[data-testid="stSidebar"]:has(.st-key-provider_panel) { width:360px !important; min-width:0 !important; }
 section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSidebarUserContent"] { padding:16px !important; }
 .st-key-provider_panel [data-testid="stVerticalBlock"] { gap: .65rem; }
-.st-key-provider_panel p, .st-key-provider_panel label { color: #eef0ff !important; }
-.st-key-provider_panel [data-testid="stCaptionContainer"] p { color: #a9b7dc !important; font-size: .78rem; }
-.st-key-provider_panel a { color: #a398ff !important; }
+.st-key-provider_panel p, .st-key-provider_panel label { color: #E6E8F0 !important; }
+.st-key-provider_panel [data-testid="stCaptionContainer"] p { color: #8b90a8 !important; font-size: .78rem; }
+.st-key-provider_panel a { color: #5DCAA5 !important; }
 .st-key-provider_panel [data-baseweb="input"],
 .st-key-provider_panel [data-baseweb="base-input"],
 .st-key-provider_panel [data-baseweb="select"] > div {
-  background: #10192c !important; color: #f4f3ff !important;
-  border-color: #334268 !important; border-radius: 10px;
+  background: rgba(17,22,51,0.85) !important; color: #E6E8F0 !important;
+  border-color: rgba(255,255,255,0.12) !important; border-radius: 10px;
 }
 .st-key-provider_panel [data-testid="stTextInput"] input,
 .st-key-provider_panel [data-testid="stTextInput"] [data-baseweb],
-.st-key-provider_panel [data-testid="stTextInputRootElement"] { color: #f4f3ff !important; background:#10192c !important; border-color:#334268 !important; }
+.st-key-provider_panel [data-testid="stTextInputRootElement"] { color: #E6E8F0 !important; background: rgba(17,22,51,0.85) !important; border-color: rgba(255,255,255,0.12) !important; }
 .st-key-provider_panel button, .st-key-provider_panel button[data-testid], .st-key-provider_panel button[data-testid]:hover {
-  background: #171d36 !important; color: #eef0ff !important; border: 1px solid #39365f !important;
+  background: rgba(255,255,255,0.04) !important; color: #E6E8F0 !important; border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: 10px; font-size: .82rem;
 }
 .st-key-provider_panel button[aria-checked="true"],
@@ -42,32 +41,61 @@ section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSid
 .st-key-provider_panel button[kind="segmented_controlActive"],
 .st-key-provider_panel button[kind="pillsActive"],
 .st-key-provider_panel button[aria-pressed="true"] {
-  background: linear-gradient(115deg, #6b72fa, #593dde) !important;
-  border-color: #9788ff !important; color: white !important;
+  background: linear-gradient(115deg, #3aa886, #5DCAA5) !important;
+  border-color: #5DCAA5 !important; color: #ffffff !important;
 }
-.st-key-provider_panel button:focus-visible { outline: 2px solid #a398ff; outline-offset: 2px; }
+.st-key-provider_panel button:focus-visible { outline: 2px solid #5DCAA5; outline-offset: 2px; }
 .st-key-provider_panel button:disabled { opacity:.5; box-shadow:none !important; }
-.st-key-provider_panel input::placeholder { color:#8e9cbf !important; }
-.st-key-provider_panel a { color:#a398ff !important; }
-.st-key-provider_panel [data-testid="stCheckbox"] label > span { background:#7558ed !important; }
+.st-key-provider_panel input::placeholder { color:#6b7191 !important; }
+.st-key-provider_panel [data-testid="stCheckbox"] label > span { background:#5DCAA5 !important; }
 @media(max-width:600px) {
   .stApp:has(.st-key-provider_panel) button[data-testid="stExpandSidebarButton"],
   .stApp:has(.st-key-provider_panel) button[data-testid="stBaseButton-headerNoPadding"],
   .stApp:has(.st-key-provider_panel) [data-testid="stSidebarCollapsedControl"] { display:flex !important; }
 }
 .provider-header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
-.provider-header strong { font: 600 24px Georgia, serif; color:#f4f3ff; }
-.provider-pill { font: 500 11px system-ui; padding:6px 9px; border:1px solid #423148; border-radius:99px; color:#f5a8bd; white-space:nowrap; }
-.provider-pill.connected { color:#38dfa0; border-color:#225345; background:#0e2825; }
-.provider-label { font:600 11px system-ui; letter-spacing:.12em; color:#a9b7dc; margin:10px 0 3px; }
-.st-key-provider_panel hr { margin: .4rem 0; border-color:#263456; }
-.st-key-provider_panel [data-testid="stExpander"] details { background:#10192c !important; border-color:#334268; }
-.st-key-provider_actions { position:sticky; bottom:-18px; background:#0c1324; padding:12px 0 18px; border-top:1px solid #263456; z-index:2; }
-.st-key-provider_panel div:has(> .st-key-provider_actions) { position:sticky; bottom:0; z-index:3; background:#0c1324; }
+.provider-header strong { font: 600 24px Georgia, serif; color:#E6E8F0; }
+.provider-pill { font: 500 11px system-ui; padding:6px 9px; border:1px solid rgba(255,255,255,0.16); border-radius:99px; color:#f5a8bd; white-space:nowrap; }
+.provider-pill.connected { color:#38dfa0; border-color:rgba(93,202,165,0.4); background:rgba(93,202,165,0.08); }
+.provider-label { font:600 11px system-ui; letter-spacing:.12em; color:#8b90a8; margin:10px 0 3px; }
+.st-key-provider_panel hr { margin: .4rem 0; border-color: rgba(255,255,255,0.08); }
+.st-key-provider_panel [data-testid="stExpander"] details { background: rgba(17,22,51,0.85) !important; border-color: rgba(255,255,255,0.12) !important; }
+.st-key-provider_actions { position:sticky; bottom:0; background: rgba(11,15,30,0.92); padding:12px 0 6px; border-top:1px solid rgba(255,255,255,0.08); z-index:2; }
+.st-key-provider_panel div:has(> .st-key-provider_actions) { position:sticky; bottom:0; z-index:3; background: rgba(11,15,30,0.92); }
 .st-key-provider_actions [data-testid="stHorizontalBlock"] { flex-wrap:nowrap !important; }
 .st-key-provider_actions [data-testid="stColumn"] { min-width:0 !important; flex:1 !important; }
+/* Quick-action rows: an icon + title + subtitle face with the real widget overlaid
+   invisibly, so the whole row stays clickable. */
+.q-action { margin: 0 0 0.55rem; }
+.q-action-face {
+  display: flex; align-items: center; gap: 0.7rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+.q-action-icon {
+  width: 32px; height: 32px; border-radius: 9px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(93,202,165,0.12); border: 1px solid rgba(93,202,165,0.25);
+  font-size: 0.95rem;
+}
+.q-action-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.q-action-title { font-size: 0.88rem; font-weight: 600; color: #E6E8F0; }
+.q-action-sub { font-size: 0.74rem; color: #8b90a8; }
+[class*="st-key-action_"] { position: relative; }
+[class*="st-key-action_"] > [data-testid="stElementContainer"]:has(.q-action) { position: relative; z-index: 1; pointer-events: none; margin: 0; }
+[class*="st-key-action_"] > [data-testid="stElementContainer"]:not(:has(.q-action)) { position: absolute; inset: 0; z-index: 2; margin: 0; display: flex; }
+[class*="st-key-action_"] > [data-testid="stElementContainer"]:not(:has(.q-action)) button,
+[class*="st-key-action_"] > [data-testid="stElementContainer"]:not(:has(.q-action)) a {
+  opacity: 0; flex: 1 1 auto; width: 100%; height: 100%; min-height: 100%; margin: 0;
+}
+[class*="st-key-action_"]:hover .q-action-face { border-color: rgba(93,202,165,0.5); background: rgba(93,202,165,0.07); }
+[class*="st-key-action_"]:has(button:disabled) .q-action-face { opacity: 0.45; }
+[class*="st-key-action_"]:has(button:focus-visible) .q-action-face,
+[class*="st-key-action_"]:has(a:focus-visible) .q-action-face { outline: 2px solid rgba(93,202,165,0.7); outline-offset: 2px; }
 @media(max-width:600px) {
-  .st-key-provider_panel { padding:12px 12px 110px; box-sizing:border-box; }
+  .st-key-provider_panel { padding:12px 0 110px; box-sizing:border-box; }
   section[data-testid="stSidebar"] .st-key-provider_actions {
     position:fixed; bottom:0; left:0; width:100%; box-sizing:border-box; padding:12px 24px 20px;
   }
@@ -291,6 +319,26 @@ def remember_model(model_id: str) -> None:
     }
 
 
+def _action_row(*, icon: str, title: str, sub: str, key: str, label: str,
+                on_click=None, disabled: bool = False, link: str | None = None) -> None:
+    """One quick-action row: an icon + title + subtitle face with the real widget
+    overlaid invisibly, so the whole row stays clickable."""
+    with st.container(key=f"action_{key}"):
+        st.markdown(
+            '<div class="q-action"><div class="q-action-face">'
+            f'<span class="q-action-icon">{icon}</span>'
+            '<span class="q-action-text">'
+            f'<span class="q-action-title">{title}</span>'
+            f'<span class="q-action-sub">{sub}</span>'
+            '</span></div></div>',
+            unsafe_allow_html=True,
+        )
+        if link:
+            st.link_button(label, link, use_container_width=True)
+        else:
+            st.button(label, on_click=on_click, disabled=disabled, use_container_width=True)
+
+
 def render_key_panel() -> None:
     """Ask Lane sidebar: the OpenRouter key, the generation switch and Save/Reset.
 
@@ -314,7 +362,6 @@ def render_key_panel() -> None:
 
     st.markdown(CSS, unsafe_allow_html=True)
     with st.container(key="provider_panel"):
-        st.markdown('<div class="provider-header"><strong>Qwythlit</strong></div>', unsafe_allow_html=True)
         st.markdown('<div class="provider-label">PROVIDER KEY</div>', unsafe_allow_html=True)
         api_key = st.text_input("OpenRouter API key", type="password", key="provider_key",
                                 placeholder="sk-or-v1-…", label_visibility="collapsed")
@@ -334,10 +381,16 @@ def render_key_panel() -> None:
         st.divider()
         enabled = st.checkbox("Generate via OpenRouter", key="provider_enabled")
         st.caption("On by default · Off = retrieval-only, source-grounded results.")
-        with st.expander("Quick actions"):
-            st.button("Clear API key", disabled=not (api_key or saved.get("api_key")),
-                      on_click=clear_key, use_container_width=True)
-            st.markdown("[View models ↗](https://openrouter.ai/models)")
+        st.markdown('<div class="provider-label">QUICK ACTIONS</div>', unsafe_allow_html=True)
+        _action_row(
+            icon="🗑️", title="Clear API key", sub="Remove the stored key from this session",
+            key="clear_key", label="Clear API key", on_click=clear_key,
+            disabled=not (api_key or saved.get("api_key")),
+        )
+        _action_row(
+            icon="🌐", title="View models", sub="Browse the OpenRouter model catalog",
+            key="models", label="View models ↗", link="https://openrouter.ai/models",
+        )
 
         draft = {"api_key": typed, "model": baseline["model"], "enabled": enabled}
         dirty = draft != baseline

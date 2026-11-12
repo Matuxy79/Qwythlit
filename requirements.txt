@@ -1,3 +1,8 @@
+# CPU-only torch. The current PyPI torch for Linux pulls in about 2.9 GB of wheels,
+# mostly NVIDIA CUDA libraries that a CPU-only host never uses. This index serves
+# torch without them. 2.6.0+cpu is the newest build it offers for CPython 3.11-3.13.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
 streamlit
 chainlit
 fastapi

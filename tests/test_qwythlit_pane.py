@@ -41,6 +41,8 @@ class TestQwythlitPane(unittest.TestCase):
         self.assertIn(".st-key-lane_suggest", QWYTHLIT_PANE_CSS)
         self.assertIn('div[data-testid="stForm"]:has(.q-rail)', QWYTHLIT_PANE_CSS)
         self.assertIn(".q-seg.is-lit", QWYTHLIT_PANE_CSS)
+        self.assertIn(".st-key-lane_clear_chat", QWYTHLIT_PANE_CSS)
+        self.assertIn("stPageLink-NavLink", QWYTHLIT_PANE_CSS)
 
     def test_heading_has_no_placeholder_copy(self):
         heading = render_lane_heading()

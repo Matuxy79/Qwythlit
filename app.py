@@ -92,6 +92,7 @@ from qwythlit_pane import (
     composer_status_html,
     render_lane_heading,
     render_qwythlit_media_background,
+    render_sidebar_brand,
 )
 from provider_settings import (
     key_status,
@@ -994,13 +995,14 @@ def _render_ask_lane() -> None:
     st.markdown(render_qwythlit_media_background("ask_lane"), unsafe_allow_html=True)
 
     with st.sidebar:
-        if st.button("🔬 Home", use_container_width=True, key="ask_lane_home_btn"):
+        st.markdown(render_sidebar_brand(), unsafe_allow_html=True)
+        if st.button("🏠 Home", use_container_width=True, key="ask_lane_home_btn"):
             st.session_state.pop("ui_mode", None)
             st.rerun()
         st.divider()
         render_key_panel()
         st.divider()
-        if st.button("🧹 Clear chat", use_container_width=True):
+        if st.button("🧹 Clear chat", use_container_width=True, key="lane_clear_chat"):
             st.session_state["lane_messages"] = []
             st.rerun()
 

@@ -13,3 +13,10 @@ enableStaticServing = true
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+base = "dark"
+primaryColor = "#5DCAA5"
+backgroundColor = "#0B0F1E"
+secondaryBackgroundColor = "#111633"
+textColor = "#E6E8F0"
