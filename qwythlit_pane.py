@@ -181,35 +181,6 @@ section[data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] span {
     color: inherit !important;
 }
 
-/* Sidebar brand: teal Q mark + wordmark, echoing the lane's main-column brand. */
-.q-side-brand {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.1rem 0.15rem 0.85rem;
-}
-.q-side-mark {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(93, 202, 165, 0.13);
-    border: 1px solid rgba(93, 202, 165, 0.45);
-    font-family: 'Outfit', sans-serif;
-    font-weight: 800;
-    font-size: 0.98rem;
-    color: #5DCAA5;
-}
-.q-side-word {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 700;
-    font-size: 1.22rem;
-    letter-spacing: 0.01em;
-    color: #E6E8F0 !important;
-}
-
 /* On the lane, Home is the current page: tint the ghost row like stPageLink[aria-current]. */
 section[data-testid="stSidebar"] .st-key-ask_lane_home_btn button {
     background: rgba(93, 202, 165, 0.13) !important;
@@ -531,14 +502,6 @@ def render_lane_heading() -> str:
         '<div class="q-brand"><span class="q-mark"></span><span class="q-wordmark">qwythlit</span></div>'
         '<div class="q-heading"><h1>Ask the knowledge layer</h1>'
         '<p>Answers are grounded in your canon corpus, with sources.</p></div>'
-    )
-
-
-def render_sidebar_brand() -> str:
-    """Sidebar brand row: teal Q mark + wordmark, matching the lane's main column."""
-    return (
-        '<div class="q-side-brand"><span class="q-side-mark">Q</span>'
-        '<span class="q-side-word">Qwythlit</span></div>'
     )
 
 

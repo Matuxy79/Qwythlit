@@ -49,6 +49,16 @@ class KeyPanelTests(unittest.TestCase):
             self.assertEqual(app.text_input[0].value, "")
             self.assertTrue(app.checkbox[0].value)
 
+    def test_panel_leads_with_the_brand_header(self):
+        from streamlit.testing.v1 import AppTest
+
+        with patch.object(client, "model_catalog", return_value=[]):
+            app = AppTest.from_string(
+                "from provider_settings import render_key_panel\nrender_key_panel()"
+            ).run()
+            self.assertFalse(app.exception)
+            self.assertIn("Qwythlit", " ".join(m.value for m in app.markdown))
+
     def test_save_stores_key_and_generation_switch(self):
         from streamlit.testing.v1 import AppTest
 

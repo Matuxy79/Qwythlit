@@ -10,8 +10,8 @@ CSS = """
 <style>
 .st-key-provider_panel {
   --provider-muted: #8b90a8;
-  padding: 2px 2px 0; border: 0; border-radius: 0;
-  background: transparent;
+  padding: 14px 14px 6px; border: 1px solid rgba(255,255,255,0.14); border-radius: 16px;
+  background: rgba(255,255,255,0.03);
   color: #E6E8F0; max-height: none; overflow: visible;
 }
 section[data-testid="stSidebar"]:has(.st-key-provider_panel) { width:360px !important; min-width:0 !important; }
@@ -95,7 +95,7 @@ section[data-testid="stSidebar"]:has(.st-key-provider_panel) [data-testid="stSid
 [class*="st-key-action_"]:has(button:focus-visible) .q-action-face,
 [class*="st-key-action_"]:has(a:focus-visible) .q-action-face { outline: 2px solid rgba(93,202,165,0.7); outline-offset: 2px; }
 @media(max-width:600px) {
-  .st-key-provider_panel { padding:12px 0 110px; box-sizing:border-box; }
+  .st-key-provider_panel { padding:12px 12px 110px; box-sizing:border-box; }
   section[data-testid="stSidebar"] .st-key-provider_actions {
     position:fixed; bottom:0; left:0; width:100%; box-sizing:border-box; padding:12px 24px 20px;
   }
@@ -362,6 +362,7 @@ def render_key_panel() -> None:
 
     st.markdown(CSS, unsafe_allow_html=True)
     with st.container(key="provider_panel"):
+        st.markdown('<div class="provider-header"><strong>Qwythlit</strong></div>', unsafe_allow_html=True)
         st.markdown('<div class="provider-label">PROVIDER KEY</div>', unsafe_allow_html=True)
         api_key = st.text_input("OpenRouter API key", type="password", key="provider_key",
                                 placeholder="sk-or-v1-…", label_visibility="collapsed")
